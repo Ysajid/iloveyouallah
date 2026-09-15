@@ -1,0 +1,9 @@
+{
+  "name": "99-names-journey",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Eleven islands, nine names each, one island a night. A small offline app for my kids.",
+  "scripts": {
+    "build": "node build.js"
+  }
+}

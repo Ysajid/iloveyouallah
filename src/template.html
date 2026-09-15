@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="utf-8">
+<title>৯৯ নামের যাত্রা</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
+<meta name="description" content="The 99 Names Journey — eleven islands, nine names each, one island a night.">
+
+<!-- launches full screen once it is added to the home screen -->
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="৯৯ নাম">
+<meta name="theme-color" content="#0b1026">
+<link rel="apple-touch-icon" href="{{ICON180}}">
+<link rel="icon" href="{{ICON180}}">
+<link rel="manifest" href="{{MANIFEST}}">
+
+<style>
+{{STYLES}}
+</style>
+</head>
+<body>
+
+<div id="stars" aria-hidden="true"></div>
+
+<div id="app">
+
+  <!-- ================= who is playing ================= -->
+  <section class="screen" id="profiles">
+    <div class="topbar">
+      <span class="grow"></span>
+      <div class="lang">
+        <button data-lang="bn">বাংলা</button>
+        <button data-lang="en">EN</button>
+      </div>
+    </div>
+    <div class="wrap">
+      <div class="crescent">🌙</div>
+      <h1 id="pw-title">কে খেলবে?</h1>
+      <p class="sub" id="pw-sub">নাম বেছে নাও, বা নতুন নাম লিখো।</p>
+
+      <div class="who" id="pw-list"></div>
+
+      <div class="newname">
+        <input id="pw-input" type="text" inputmode="text" autocomplete="off"
+               spellcheck="false" maxlength="24" placeholder="নতুন নাম">
+        <button class="btn btn-gold" id="pw-add">যোগ করো</button>
+      </div>
+
+      <p class="hint" id="pw-nostore" hidden></p>
+    </div>
+  </section>
+
+  <!-- ================= the map ================= -->
+  <section class="screen" id="map">
+    <div class="topbar">
+      <span class="grow"></span>
+      <div class="lang">
+        <button data-lang="bn">বাংলা</button>
+        <button data-lang="en">EN</button>
+      </div>
+    </div>
+    <div class="wrap">
+      <div class="maphead">
+        <p class="eyebrow" id="map-sub">এগারো দ্বীপ · প্রতি রাতে একটা</p>
+        <h1 id="map-title">৯৯ নামের যাত্রা</h1>
+        <div class="progressline"><i id="map-bar" style="width:0%"></i></div>
+        <p class="eyebrow" id="map-count" style="margin-top:10px"></p>
+        <button class="btn btn-ghost who-now" id="map-who" style="margin-top:6px"></button>
+      </div>
+
+      <div class="islands" id="map-list"></div>
+
+      <p style="margin-top:26px">
+        <button class="btn btn-wide" id="map-all">৯৯টি নাম দেখো</button>
+      </p>
+    </div>
+  </section>
+
+  <!-- ================= one name ================= -->
+  <section class="screen" id="card">
+    <div class="topbar">
+      <button class="iconbtn" id="card-quit" aria-label="back">←</button>
+      <span class="grow"></span>
+      <div class="lang">
+        <button data-lang="bn">বাংলা</button>
+        <button data-lang="en">EN</button>
+      </div>
+    </div>
+    <div class="wrap">
+      <div class="cardhead">
+        <p class="eyebrow" id="card-island" style="margin:0"></p>
+      </div>
+      <div class="pips" id="card-pips" style="margin-bottom:16px"></div>
+
+      <div class="card">
+        <div class="num" id="card-num"></div>
+        <div class="ar" id="card-ar"></div>
+        <div class="tr" id="card-tr"></div>
+        <button class="say" id="card-say" hidden>🔊</button>
+        <p class="meaning" id="card-meaning"></p>
+        <hr>
+        <p class="about" id="card-about"></p>
+      </div>
+
+      <div class="today">
+        <div class="lbl" id="today-lbl">আজকে এটা করো</div>
+        <p id="today-text"></p>
+      </div>
+
+      <div class="cardnav">
+        <button class="btn" id="card-back">আগেরটা</button>
+        <button class="btn btn-gold" id="card-next">পরেরটা</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= matching game ================= -->
+  <section class="screen" id="game">
+    <div class="topbar">
+      <button class="iconbtn" id="game-quit" aria-label="back">←</button>
+      <span class="grow"></span>
+      <div class="lang">
+        <button data-lang="bn">বাংলা</button>
+        <button data-lang="en">EN</button>
+      </div>
+    </div>
+    <div class="wrap">
+      <div class="gamehead">
+        <p class="eyebrow" id="game-round"></p>
+        <h2 id="game-title">মিলাও</h2>
+        <p id="game-sub">নামের সাথে মানে মিলাও।</p>
+      </div>
+
+      <div class="pairs">
+        <div class="col" id="game-names"></div>
+        <div class="col" id="game-meanings"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= island lit ================= -->
+  <section class="screen" id="finish">
+    <div class="wrap finish">
+      <div class="big" id="fin-em">🌙</div>
+      <div class="got" id="fin-stars"></div>
+      <h2 id="fin-title">দ্বীপটা জ্বলে উঠল!</h2>
+      <p class="eyebrow" id="fin-name" style="margin:8px 0 18px"></p>
+      <p class="lead" id="fin-sub"></p>
+
+      <div class="today">
+        <div class="lbl" id="fin-today-lbl">আজকে এটা করো</div>
+        <p id="fin-today"></p>
+      </div>
+
+      <button class="btn btn-gold btn-wide" id="fin-back">মানচিত্রে ফিরে যাও</button>
+    </div>
+  </section>
+
+  <!-- ================= all 99 ================= -->
+  <section class="screen" id="all">
+    <div class="topbar">
+      <button class="iconbtn" id="all-back" aria-label="back">←</button>
+      <span class="grow"></span>
+      <div class="lang">
+        <button data-lang="bn">বাংলা</button>
+        <button data-lang="en">EN</button>
+      </div>
+    </div>
+    <div class="wrap">
+      <div class="listhead">
+        <h2 id="all-title">৯৯টি নাম</h2>
+        <p class="eyebrow" id="all-sub" style="margin-top:8px"></p>
+      </div>
+      <div class="all" id="all-list"></div>
+    </div>
+  </section>
+
+</div>
+
+<!-- one name, opened from the full list -->
+<div class="sheet" id="sheet">
+  <div class="inner">
+    <div class="grab"></div>
+    <div class="card" style="background:none;border:none;padding-top:0">
+      <div class="num" id="sh-num"></div>
+      <div class="ar" id="sh-ar"></div>
+      <div class="tr" id="sh-tr"></div>
+      <p class="meaning" id="sh-meaning"></p>
+      <hr>
+      <p class="about" id="sh-about"></p>
+    </div>
+    <div class="today">
+      <div class="lbl" id="sh-today-lbl">আজকে এটা করো</div>
+      <p id="sh-today"></p>
+    </div>
+    <p style="margin:18px 0 0">
+      <button class="btn btn-wide" id="sh-close">বন্ধ করো</button>
+    </p>
+  </div>
+</div>
+
+<script>
+{{ISLANDS}}
+{{NAMES}}
+{{APP}}
+</script>
+</body>
+</html>
