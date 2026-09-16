@@ -222,115 +222,64 @@ fun MapScreen(state: JourneyState) {
     val lit = state.progress.lit()
 
     Page(state) {
-        Spacer(Modifier.height(4.dp))
-        Eyebrow(words.subtitle)
-        Spacer(Modifier.height(8.dp))
-        Text(
-            words.journey,
-            color = Palette.ink,
-            fontSize = 26.sp,
-            fontWeight = FontWeight.Bold,
-            textAlign = TextAlign.Center,
-        )
-        Spacer(Modifier.height(14.dp))
-
-        // how many nights in
-        Box(
+        // the cartouche: title and progress, like a label printed on the chart
+        Column(
             Modifier
-                .fillMaxWidth(0.72f)
-                .height(8.dp)
-                .clip(RoundedCornerShape(50))
-                .background(Palette.sand),
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(22.dp))
+                .background(Palette.card)
+                .border(BorderStroke(1.dp, Palette.line), RoundedCornerShape(22.dp))
+                .padding(horizontal = 20.dp, vertical = 14.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
         ) {
+            Eyebrow(words.subtitle)
+            Spacer(Modifier.height(6.dp))
+            Text(
+                words.journey,
+                color = Palette.ink,
+                fontSize = 24.sp,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center,
+            )
+            Spacer(Modifier.height(12.dp))
             Box(
                 Modifier
-                    .fillMaxWidth(lit.toFloat() / state.journey.count)
-                    .fillMaxSize()
+                    .fillMaxWidth(0.72f)
+                    .height(9.dp)
                     .clip(RoundedCornerShape(50))
-                    .background(Brush.horizontalGradient(listOf(Palette.goldDeep, Palette.gold)))
-            )
-        }
-        Spacer(Modifier.height(10.dp))
-        Eyebrow(words.islandsDone(lit, state.journey.count))
-        Spacer(Modifier.height(6.dp))
-        state.who?.let { who ->
-            Text(
-                words.playingAs(who),
-                color = Palette.inkSoft,
-                fontSize = 16.sp,
-                modifier = Modifier
-                    .clip(RoundedCornerShape(50))
-                    .clickable { state.toProfiles() }
-                    .padding(horizontal = 16.dp, vertical = 10.dp),
-            )
-        }
-        Spacer(Modifier.height(18.dp))
-
-        state.journey.islands.forEach { isl ->
-            IslandRow(state, isl)
-            Spacer(Modifier.height(14.dp))
-        }
-
-        Spacer(Modifier.height(10.dp))
-        PlainButton(words.viewAll, Modifier.fillMaxWidth()) { state.toAll() }
-        Spacer(Modifier.height(36.dp))
-    }
-}
-
-@Composable
-private fun IslandRow(state: JourneyState, isl: Island) {
-    val words = state.words
-    val open = state.progress.unlocked(isl.i)
-    val here = state.progress.of(isl.i)
-
-    Row(
-        Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(22.dp))
-            .background(if (open) Palette.islandFill(isl) else Palette.sand)
-            .border(
-                BorderStroke(1.dp, if (open) Palette.islandEdge(isl) else Palette.line),
-                RoundedCornerShape(22.dp),
-            )
-            .clickable(enabled = open) { state.openIsland(isl.i) }
-            .padding(18.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Box(
-            Modifier
-                .size(58.dp)
-                .clip(RoundedCornerShape(18.dp))
-                .background(if (open) Palette.islandBadge(isl) else Palette.line),
-            contentAlignment = Alignment.Center,
-        ) {
-            Text(if (open) isl.emoji else "🔒", fontSize = 26.sp)
-        }
-        Spacer(Modifier.width(16.dp))
-        Column(Modifier.weight(1f)) {
-            Text(
-                words.nth(isl.i),
-                color = Palette.inkFaint,
-                fontSize = 12.sp,
-                letterSpacing = 1.2.sp,
-                fontWeight = FontWeight.Bold,
-            )
-            Spacer(Modifier.height(2.dp))
-            Text(
-                isl.title(state.lang),
-                color = if (open) Palette.ink else Palette.inkFaint,
-                fontSize = 20.sp,
-                fontWeight = FontWeight.Bold,
-            )
-            Spacer(Modifier.height(6.dp))
-            if (open) {
-                StarRow(here.stars)
-            } else {
-                Text(words.locked, color = Palette.inkFaint, fontSize = 14.sp)
+                    .background(Palette.sand)
+                    .border(BorderStroke(1.dp, Palette.line), RoundedCornerShape(50)),
+            ) {
+                Box(
+                    Modifier
+                        .fillMaxWidth(lit.toFloat() / state.journey.count)
+                        .fillMaxSize()
+                        .clip(RoundedCornerShape(50))
+                        .background(
+                            Brush.horizontalGradient(listOf(Palette.gold, Palette.goldDeep))
+                        )
+                )
+            }
+            Spacer(Modifier.height(8.dp))
+            Eyebrow(words.islandsDone(lit, state.journey.count))
+            state.who?.let { who ->
+                Text(
+                    words.playingAs(who),
+                    color = Palette.inkSoft,
+                    fontSize = 15.sp,
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(50))
+                        .clickable { state.toProfiles() }
+                        .padding(horizontal = 16.dp, vertical = 10.dp),
+                )
             }
         }
-        if (here.done) {
-            Text("✓", color = Palette.green, fontSize = 22.sp)
-        }
+
+        Spacer(Modifier.height(10.dp))
+        OceanChart(state)
+        Spacer(Modifier.height(26.dp))
+        PlainButton(words.viewAll, Modifier.fillMaxWidth()) { state.toAll() }
+        Spacer(Modifier.height(36.dp))
     }
 }
 

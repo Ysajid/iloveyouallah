@@ -45,7 +45,12 @@ data class Island(
 }
 
 /** The whole journey, read once from assets at startup. */
-class Journey(val islands: List<Island>, val names: List<NameEntry>) {
+class Journey(
+    val islands: List<Island>,
+    val names: List<NameEntry>,
+    /** The five coastline outlines, as SVG path data on a 100x100 box. */
+    val coasts: List<String> = emptyList(),
+) {
 
     private val byIsland: Map<Int, List<NameEntry>> = names.groupBy { it.island }
 
@@ -54,6 +59,10 @@ class Journey(val islands: List<Island>, val names: List<NameEntry>) {
     fun namesOf(island: Int): List<NameEntry> = byIsland[island].orEmpty()
 
     fun island(i: Int): Island = islands.first { it.i == i }
+
+    /** Which coastline this island wears. Wraps, so a bad seed cannot crash. */
+    fun coastFor(isl: Island): String =
+        if (coasts.isEmpty()) "" else coasts[isl.seed.mod(coasts.size)]
 
     val count: Int get() = islands.size
 
@@ -96,7 +105,10 @@ class Journey(val islands: List<Island>, val names: List<NameEntry>) {
                 )
             }
 
-            return Journey(islands, names)
+            val coastsJson = root.optJSONArray("coasts")
+            val coasts = (0 until (coastsJson?.length() ?: 0)).map { coastsJson!!.getString(it) }
+
+            return Journey(islands, names, coasts)
         }
 
         private fun JSONObject.toLines() = Lines(

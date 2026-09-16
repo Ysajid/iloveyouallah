@@ -249,7 +249,7 @@ function build() {
 function writeAndroidData() {
   const scope = {};
   new Function("s", "with (s) { " + read("islands.js") + "\n" + read("names.js") +
-    "\n s.ISLANDS = ISLANDS; s.NAMES = NAMES; }")(scope);
+    "\n s.ISLANDS = ISLANDS; s.NAMES = NAMES; s.COASTS = COASTS; }")(scope);
 
   if (scope.NAMES.length !== 99) {
     throw new Error("expected 99 names, found " + scope.NAMES.length);
@@ -264,7 +264,11 @@ function writeAndroidData() {
 
   const assets = path.join(__dirname, "android", "app", "src", "main", "assets");
   fs.mkdirSync(assets, { recursive: true });
-  const json = JSON.stringify({ islands: scope.ISLANDS, names: scope.NAMES });
+  const json = JSON.stringify({
+    islands: scope.ISLANDS,
+    names: scope.NAMES,
+    coasts: scope.COASTS,      // the native chart draws the same coastlines
+  });
   fs.writeFileSync(path.join(assets, "names.json"), json, "utf8");
 
   const kb = (Buffer.byteLength(json, "utf8") / 1024).toFixed(0);

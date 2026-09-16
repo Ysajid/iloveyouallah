@@ -288,14 +288,14 @@ h1, h2, h3 { line-height: 1.25; margin: 0; font-weight: 700; }
   position: relative;
   width: calc(100% - 24px);
   margin: 0 12px;
+  /* height is set in script, from the labels actually rendered — see
+     sizeChart(). This is only the fallback before that runs. */
   aspect-ratio: 1 / 4.4;
   border-radius: 26px;
   overflow: hidden;
   border: 1px solid #cfe3e8;
   box-shadow: var(--lift), inset 0 0 40px rgba(40, 110, 130, .10);
 }
-@media (min-width: 560px) { .chart { aspect-ratio: 1 / 3.1; } }
-@media (min-width: 700px) { .chart { aspect-ratio: 1 / 2.6; } }
 
 .chart .sea {
   position: absolute;
