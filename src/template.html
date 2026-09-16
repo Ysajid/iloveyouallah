@@ -61,20 +61,21 @@
         <button data-lang="en">EN</button>
       </div>
     </div>
-    <div class="wrap">
-      <div class="maphead">
+    <div class="ocean">
+      <div class="cartouche">
         <p class="eyebrow" id="map-sub">এগারো দ্বীপ · প্রতি রাতে একটা</p>
         <h1 id="map-title">৯৯ নামের যাত্রা</h1>
         <div class="progressline"><i id="map-bar" style="width:0%"></i></div>
-        <p class="eyebrow" id="map-count" style="margin-top:10px"></p>
-        <button class="btn btn-ghost who-now" id="map-who" style="margin-top:6px"></button>
+        <p class="eyebrow" id="map-count"></p>
+        <button class="btn btn-ghost who-now" id="map-who"></button>
       </div>
 
-      <div class="islands" id="map-list"></div>
+      <!-- the chart itself: ocean, route and islands, rebuilt on every paint -->
+      <div class="chart" id="map-chart"></div>
 
-      <p style="margin-top:26px">
+      <div class="mapfoot">
         <button class="btn btn-wide" id="map-all">৯৯টি নাম দেখো</button>
-      </p>
+      </div>
     </div>
   </section>
 

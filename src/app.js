@@ -316,6 +316,139 @@
 
   /* ---------- the map ---------- */
 
+  /* ---------- the map: an ocean chart with the islands on it ---------- */
+
+  var MAP_W = 100;          // chart width in svg units
+  var MAP_H = 300;          // chart height — taller than the screen, so you scroll it
+  var ISLE_W = 26;          // an island's width at size 1
+
+  function mapX(isl) { return isl.x * MAP_W; }
+  function mapY(isl) { return isl.y * MAP_H; }
+
+  function svgEl(tag, attrs) {
+    var n = document.createElementNS("http://www.w3.org/2000/svg", tag);
+    for (var k in attrs) if (attrs.hasOwnProperty(k)) n.setAttribute(k, attrs[k]);
+    return n;
+  }
+
+  /* One leg of the sailing route, bent so the line looks sailed rather than ruled. */
+  function legPath(from, to, pull) {
+    var x1 = mapX(from), y1 = mapY(from), x2 = mapX(to), y2 = mapY(to);
+    var mx = (x1 + x2) / 2, my = (y1 + y2) / 2;
+    // push the midpoint sideways, alternating, for a lazy S down the chart
+    var nx = -(y2 - y1), ny = x2 - x1;
+    var len = Math.sqrt(nx * nx + ny * ny) || 1;
+    return "M" + x1 + "," + y1 +
+           " Q" + (mx + nx / len * pull) + "," + (my + ny / len * pull) +
+           " " + x2 + "," + y2;
+  }
+
+  function oceanDefs() {
+    var defs = svgEl("defs");
+
+    var deep = svgEl("linearGradient", { id: "deep", x1: "0", y1: "0", x2: "0.3", y2: "1" });
+    [["0%", "#16204d"], ["35%", "#0e1738"], ["70%", "#0a1130"], ["100%", "#070c22"]]
+      .forEach(function (stop) {
+        deep.appendChild(svgEl("stop", { offset: stop[0], "stop-color": stop[1] }));
+      });
+    defs.appendChild(deep);
+
+    // the moon, off the top-left, and the light it lays on the water
+    var moon = svgEl("radialGradient", { id: "moonglow" });
+    moon.appendChild(svgEl("stop", { offset: "0%", "stop-color": "#f4c95d", "stop-opacity": ".30" }));
+    moon.appendChild(svgEl("stop", { offset: "60%", "stop-color": "#f4c95d", "stop-opacity": ".07" }));
+    moon.appendChild(svgEl("stop", { offset: "100%", "stop-color": "#f4c95d", "stop-opacity": "0" }));
+    defs.appendChild(moon);
+
+    ISLANDS.forEach(function (isl) {
+      // lit from the top-left, like the moon is
+      var g = svgEl("linearGradient", { id: "land" + isl.i, x1: "0.2", y1: "0", x2: "0.8", y2: "1" });
+      g.appendChild(svgEl("stop", { offset: "0%", "stop-color": "hsl(" + isl.hue + " 46% 46%)" }));
+      g.appendChild(svgEl("stop", { offset: "55%", "stop-color": "hsl(" + isl.hue + " 42% 33%)" }));
+      g.appendChild(svgEl("stop", { offset: "100%", "stop-color": "hsl(" + isl.hue + " 40% 24%)" }));
+      defs.appendChild(g);
+
+      var shallow = svgEl("radialGradient", { id: "shallow" + isl.i });
+      shallow.appendChild(svgEl("stop", { offset: "40%", "stop-color": "hsl(" + isl.hue + " 45% 45%)", "stop-opacity": ".00" }));
+      shallow.appendChild(svgEl("stop", { offset: "62%", "stop-color": "hsl(185 60% 55%)", "stop-opacity": ".22" }));
+      shallow.appendChild(svgEl("stop", { offset: "100%", "stop-color": "hsl(190 60% 50%)", "stop-opacity": "0" }));
+      defs.appendChild(shallow);
+    });
+
+    var fog = svgEl("radialGradient", { id: "fog" });
+    fog.appendChild(svgEl("stop", { offset: "35%", "stop-color": "#8f9ac4", "stop-opacity": ".20" }));
+    fog.appendChild(svgEl("stop", { offset: "100%", "stop-color": "#8f9ac4", "stop-opacity": "0" }));
+    defs.appendChild(fog);
+
+    return defs;
+  }
+
+  /* Swell lines across the whole chart. Cheap, and they read as water. */
+  function swell() {
+    var g = svgEl("g", { class: "swell" });
+    for (var y = 4; y < MAP_H; y += 5.5) {
+      var d = "M-12," + y.toFixed(1);
+      for (var x = -12; x <= MAP_W + 12; x += 8) {
+        var lift = (((x + y) % 3) - 1) * 0.5;
+        d += " q4," + lift.toFixed(2) + " 8,0";
+      }
+      g.appendChild(svgEl("path", {
+        d: d,
+        fill: "none",
+        stroke: "#7fb4d8",
+        "stroke-width": y % 11 < 5.5 ? 0.22 : 0.13,
+        "stroke-opacity": 0.11,
+        "stroke-linecap": "round",
+      }));
+    }
+    return g;
+  }
+
+  /* Each island is its own little picture, so it keeps its shape whatever
+     the chart is stretched to. The ocean behind it may stretch freely. */
+  function islandArt(isl, open) {
+    var svg = svgEl("svg", { viewBox: "-16 -10 132 138", "aria-hidden": "true" });
+    var coast = COASTS[isl.seed % COASTS.length];
+
+    svg.appendChild(svgEl("ellipse", {
+      cx: 50, cy: 52,
+      rx: open ? 64 : 50, ry: open ? 44 : 34,
+      fill: open ? "url(#shallow" + isl.i + ")" : "url(#fog)",
+    }));
+
+    // the cliff side: a darker copy pushed down. This is what reads as depth.
+    svg.appendChild(svgEl("path", {
+      d: coast,
+      transform: "translate(0,10)",
+      fill: open ? "hsl(" + isl.hue + " 38% 14%)" : "#252c4b",
+      opacity: open ? 1 : 0.5,
+    }));
+    // a pale beach where land meets water
+    svg.appendChild(svgEl("path", {
+      d: coast,
+      transform: "translate(0,3.5)",
+      fill: "none",
+      stroke: "#e7dfc6",
+      "stroke-width": 3,
+      "stroke-opacity": open ? 0.22 : 0.06,
+    }));
+    // the lit top face
+    svg.appendChild(svgEl("path", {
+      d: coast,
+      fill: open ? "url(#land" + isl.i + ")" : "#363d66",
+      opacity: open ? 1 : 0.62,
+    }));
+    svg.appendChild(svgEl("path", {
+      d: coast,
+      fill: "none",
+      stroke: open ? "hsl(" + isl.hue + " 58% 64%)" : "#5a628c",
+      "stroke-width": 2,
+      "stroke-opacity": open ? 0.45 : 0.25,
+    }));
+
+    return svg;
+  }
+
   function paintMap() {
     el("map-title").textContent = t("journey");
     el("map-sub").textContent = t("subtitle");
@@ -326,42 +459,89 @@
     el("map-count").textContent = t("islandsDone", num(lit), num(TOTAL_ISLANDS));
     el("map-bar").style.width = (lit / TOTAL_ISLANDS * 100) + "%";
 
-    var box = el("map-list");
-    clear(box);
+    var chart = el("map-chart");
+    clear(chart);
 
+    /* ---- the water, the moonlight and the route ---- */
+    var sea = svgEl("svg", {
+      class: "sea",
+      viewBox: "0 0 " + MAP_W + " " + MAP_H,
+      preserveAspectRatio: "none",
+      "aria-hidden": "true",
+    });
+    sea.appendChild(oceanDefs());
+    sea.appendChild(svgEl("rect", { x: 0, y: 0, width: MAP_W, height: MAP_H, fill: "url(#deep)" }));
+    sea.appendChild(svgEl("ellipse", { cx: 18, cy: 12, rx: 72, ry: 58, fill: "url(#moonglow)" }));
+    sea.appendChild(swell());
+
+    for (var k = 0; k < ISLANDS.length - 1; k++) {
+      var from = ISLANDS[k], to = ISLANDS[k + 1];
+      var sailed = (S.prog.islands[from.i] || {}).done;
+      sea.appendChild(svgEl("path", {
+        d: legPath(from, to, k % 2 ? 7 : -7),
+        fill: "none",
+        stroke: sailed ? "#f4c95d" : "#9fb0d8",
+        "stroke-width": sailed ? 0.7 : 0.5,
+        "stroke-opacity": sailed ? 0.75 : 0.26,
+        "stroke-linecap": "round",
+        "stroke-dasharray": "2.4 3.2",
+      }));
+    }
+    chart.appendChild(sea);
+
+    /* ---- the islands, each one its own tap target ---- */
     ISLANDS.forEach(function (isl) {
       var open = unlocked(isl.i);
       var p = S.prog.islands[isl.i] || { seen: [], stars: 0, done: false };
 
-      var btn = make("button", "island" + (open ? "" : " locked") + (p.done ? " done" : ""));
+      var btn = make("button", "isle" + (open ? "" : " locked") + (p.done ? " done" : ""));
+      btn.style.left = isl.x * 100 + "%";
+      btn.style.top = isl.y * 100 + "%";
+      btn.style.width = (ISLE_W * 1.32 * isl.size) + "%";
       btn.style.setProperty("--h", isl.hue);
+      btn.style.setProperty("--bob", (-isl.seed * 1.3) + "s");
 
-      btn.appendChild(make("div", "em", open ? isl.emoji : "🔒"));
+      var art = make("div", "art");
+      art.appendChild(islandArt(isl, open));
+      art.appendChild(make("span", "em", open ? isl.emoji : "🔒"));
+      if (p.done) art.appendChild(make("span", "flag", "✓"));
+      btn.appendChild(art);
 
-      var body = make("div", "body");
-      body.appendChild(make("div", "nth", t("nth", num(isl.i))));
-      body.appendChild(make("div", "ttl", S.lang === "bn" ? isl.bn : isl.en));
-
+      // hangs below the island; still part of the button, so still tappable
+      var plate = make("div", "plate");
+      plate.appendChild(make("div", "nth", t("nth", num(isl.i))));
+      plate.appendChild(make("div", "ttl", S.lang === "bn" ? isl.bn : isl.en));
       if (open) {
         var st = make("div", "stars");
-        for (var k = 0; k < 3; k++) {
-          st.appendChild(make("span", k < p.stars ? "" : "off", "★"));
-        }
-        body.appendChild(st);
+        for (var q = 0; q < 3; q++) st.appendChild(make("span", q < p.stars ? "" : "off", "★"));
+        plate.appendChild(st);
       } else {
-        body.appendChild(make("div", "stars", t("locked")));
+        plate.appendChild(make("div", "stars locked-note", t("locked")));
       }
-      btn.appendChild(body);
-
-      if (p.done) btn.appendChild(make("div", "tick", "✓"));
+      btn.appendChild(plate);
 
       if (open) {
         btn.addEventListener("click", function () { openIsland(isl.i); });
       } else {
         btn.disabled = true;
       }
-      box.appendChild(btn);
+      chart.appendChild(btn);
     });
+
+    /* ---- the boat marks the island they are up to ---- */
+    var next = null;
+    for (var n = 0; n < ISLANDS.length; n++) {
+      if (unlocked(ISLANDS[n].i) && !(S.prog.islands[ISLANDS[n].i] || {}).done) {
+        next = ISLANDS[n];
+        break;
+      }
+    }
+    if (next) {
+      var boat = make("div", "boat", "⛵");
+      boat.style.left = (next.x * 100 + (next.x > 0.5 ? -19 : 19)) + "%";
+      boat.style.top = (next.y * 100 - 1.2) + "%";
+      chart.appendChild(boat);
+    }
   }
 
   /* ---------- reading the nine cards ---------- */
