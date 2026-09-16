@@ -12,3 +12,9 @@ android/app/release/
 .idea/
 *.iml
 android/.kotlin/
+
+# Built APKs. dist/99-names.html is committed because it is small text and is
+# the thing you copy to a tablet; an APK is 6 MB of binary that changes
+# wholesale on every build, so build it instead:
+#   cd android && gradle :app:assembleRelease
+*.apk
