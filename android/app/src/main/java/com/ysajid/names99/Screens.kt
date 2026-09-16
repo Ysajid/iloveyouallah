@@ -162,7 +162,7 @@ fun ProfilesScreen(state: JourneyState) {
                     .weight(1f)
                     .defaultMinSize(minHeight = 62.dp)
                     .clip(RoundedCornerShape(18.dp))
-                    .background(Color(0x40000000))
+                    .background(Color.White)
                     .border(BorderStroke(1.dp, Palette.cardLine), RoundedCornerShape(18.dp))
                     .padding(horizontal = 20.dp, vertical = 16.dp),
                 contentAlignment = Alignment.CenterStart,
@@ -195,7 +195,7 @@ fun ProfilesScreen(state: JourneyState) {
     pendingDelete?.let { name ->
         AlertDialog(
             onDismissRequest = { pendingDelete = null },
-            containerColor = Palette.night2,
+            containerColor = Palette.card,
             titleContentColor = Palette.ink,
             textContentColor = Palette.inkSoft,
             title = { Text(words.removeQuestion(name)) },
@@ -240,7 +240,7 @@ fun MapScreen(state: JourneyState) {
                 .fillMaxWidth(0.72f)
                 .height(8.dp)
                 .clip(RoundedCornerShape(50))
-                .background(Color(0x1AFFFFFF)),
+                .background(Palette.sand),
         ) {
             Box(
                 Modifier
@@ -287,9 +287,9 @@ private fun IslandRow(state: JourneyState, isl: Island) {
         Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(22.dp))
-            .background(if (open) Palette.islandFill(isl.hue) else Color(0x0AFFFFFF))
+            .background(if (open) Palette.islandFill(isl) else Palette.sand)
             .border(
-                BorderStroke(1.dp, if (open) Palette.islandEdge(isl.hue) else Color(0x14FFFFFF)),
+                BorderStroke(1.dp, if (open) Palette.islandEdge(isl) else Palette.line),
                 RoundedCornerShape(22.dp),
             )
             .clickable(enabled = open) { state.openIsland(isl.i) }
@@ -300,7 +300,7 @@ private fun IslandRow(state: JourneyState, isl: Island) {
             Modifier
                 .size(58.dp)
                 .clip(RoundedCornerShape(18.dp))
-                .background(if (open) Palette.islandBadge(isl.hue) else Color(0x0DFFFFFF)),
+                .background(if (open) Palette.islandBadge(isl) else Palette.line),
             contentAlignment = Alignment.Center,
         ) {
             Text(if (open) isl.emoji else "🔒", fontSize = 26.sp)
@@ -358,7 +358,7 @@ fun CardScreen(state: JourneyState) {
                             when {
                                 index == state.cardAt -> Palette.gold
                                 seen -> Palette.goldDeep
-                                else -> Color(0x33FFFFFF)
+                                else -> Palette.line
                             }
                         )
                 )
@@ -409,9 +409,9 @@ private fun SpeakerButton(label: String, playing: Boolean, onClick: () -> Unit) 
     Row(
         Modifier
             .clip(RoundedCornerShape(50))
-            .background(if (playing) Palette.gold else Color(0x14FFFFFF))
+            .background(if (playing) Palette.gold else Palette.sand)
             .border(
-                BorderStroke(1.dp, if (playing) Color.Transparent else Palette.cardLine),
+                BorderStroke(1.dp, if (playing) Palette.goldDeep else Palette.cardLine),
                 RoundedCornerShape(50),
             )
             .clickable { onClick() }
@@ -422,7 +422,7 @@ private fun SpeakerButton(label: String, playing: Boolean, onClick: () -> Unit) 
         Text("🔊", fontSize = 16.sp)
         Text(
             label,
-            color = if (playing) Color(0xFF241A02) else Palette.ink,
+            color = if (playing) Palette.onGold else Palette.ink,
             fontSize = 15.sp,
             fontWeight = FontWeight.SemiBold,
         )
@@ -519,7 +519,7 @@ fun AllNamesScreen(state: JourneyState) {
                     Spacer(Modifier.width(14.dp))
                     Text(
                         entry.arabic,
-                        color = Palette.gold,
+                        color = Palette.teal,
                         fontSize = 24.sp,
                         modifier = Modifier.width(120.dp),
                         textAlign = TextAlign.End,
@@ -549,7 +549,7 @@ fun AllNamesScreen(state: JourneyState) {
             Column(
                 Modifier
                     .clip(RoundedCornerShape(26.dp))
-                    .background(Palette.night2)
+                    .background(Palette.paper)
                     .border(BorderStroke(1.dp, Palette.cardLine), RoundedCornerShape(26.dp))
                     .padding(22.dp)
                     .verticalScroll(rememberScrollState()),

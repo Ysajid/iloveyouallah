@@ -4,23 +4,26 @@
    x, y place the island on the chart: x across (0 = west edge, 1 = east),
    y down the route (0 = where you start, 1 = the last island). The chart is
    taller than the screen, so the journey is something you scroll along.
-   Both the web build and the Android build read these, so the map looks the
-   same in each.
+
+   hue/sat/light is the island's colour, taken from the playroom: the rainbow
+   arch and the rug. Kept pale and low-saturation on purpose — a soft pastel
+   reads as calm, where the same hue at full strength reads as a toy shop.
 
    size nudges a few islands bigger or smaller so the archipelago does not
-   look stamped out, and seed picks which coastline shape it gets. */
+   look stamped out, and seed picks which coastline shape it gets.
+   Both builds read all of this, so the map matches in each. */
 const ISLANDS = [
-  { i: 1,  emoji: "🤍", bn: "মায়ার দ্বীপ",      en: "Island of Mercy",       hue: 340, x: 0.30, y: 0.035, size: 1.00, seed: 0 },
-  { i: 2,  emoji: "🕊️", bn: "ক্ষমার দ্বীপ",      en: "Island of Forgiveness", hue: 200, x: 0.64, y: 0.122, size: 0.92, seed: 1 },
-  { i: 3,  emoji: "👑", bn: "রাজার দ্বীপ",      en: "Island of the King",    hue: 45,  x: 0.33, y: 0.210, size: 1.08, seed: 2 },
-  { i: 4,  emoji: "🌱", bn: "সৃষ্টির দ্বীপ",     en: "Island of Making",      hue: 130, x: 0.69, y: 0.298, size: 0.95, seed: 3 },
-  { i: 5,  emoji: "🎁", bn: "দানের দ্বীপ",      en: "Island of Giving",      hue: 20,  x: 0.36, y: 0.386, size: 1.02, seed: 4 },
-  { i: 6,  emoji: "💡", bn: "আলোর দ্বীপ",       en: "Island of Light",       hue: 55,  x: 0.68, y: 0.474, size: 0.90, seed: 0 },
-  { i: 7,  emoji: "🔭", bn: "জ্ঞানের দ্বীপ",     en: "Island of Knowing",     hue: 260, x: 0.31, y: 0.562, size: 1.05, seed: 1 },
-  { i: 8,  emoji: "⚡", bn: "শক্তির দ্বীপ",      en: "Island of Strength",    hue: 15,  x: 0.66, y: 0.650, size: 0.98, seed: 2 },
-  { i: 9,  emoji: "⚖️", bn: "ন্যায়ের দ্বীপ",     en: "Island of Fairness",    hue: 165, x: 0.34, y: 0.738, size: 0.93, seed: 3 },
-  { i: 10, emoji: "♾️", bn: "চিরকালের দ্বীপ",   en: "Island of Forever",     hue: 230, x: 0.68, y: 0.826, size: 1.00, seed: 4 },
-  { i: 11, emoji: "🏔️", bn: "মহিমার দ্বীপ",     en: "Island of Greatness",   hue: 285, x: 0.47, y: 0.930, size: 1.22, seed: 2 },
+  { i: 1,  emoji: "🤍", bn: "মায়ার দ্বীপ",      en: "Island of Mercy",       x: 0.30, y: 0.035, size: 1.00, seed: 0, hue: 8,   sat: 58, light: 80 },
+  { i: 2,  emoji: "🕊️", bn: "ক্ষমার দ্বীপ",      en: "Island of Forgiveness", x: 0.64, y: 0.122, size: 0.92, seed: 1, hue: 196, sat: 55, light: 78 },
+  { i: 3,  emoji: "👑", bn: "রাজার দ্বীপ",      en: "Island of the King",    x: 0.33, y: 0.210, size: 1.08, seed: 2, hue: 44,  sat: 72, light: 74 },
+  { i: 4,  emoji: "🌱", bn: "সৃষ্টির দ্বীপ",     en: "Island of Making",      x: 0.69, y: 0.298, size: 0.95, seed: 3, hue: 150, sat: 42, light: 76 },
+  { i: 5,  emoji: "🎁", bn: "দানের দ্বীপ",      en: "Island of Giving",      x: 0.36, y: 0.386, size: 1.02, seed: 4, hue: 24,  sat: 70, light: 78 },
+  { i: 6,  emoji: "💡", bn: "আলোর দ্বীপ",       en: "Island of Light",       x: 0.68, y: 0.474, size: 0.90, seed: 0, hue: 50,  sat: 78, light: 76 },
+  { i: 7,  emoji: "🔭", bn: "জ্ঞানের দ্বীপ",     en: "Island of Knowing",     x: 0.31, y: 0.562, size: 1.05, seed: 1, hue: 275, sat: 38, light: 80 },
+  { i: 8,  emoji: "⚡", bn: "শক্তির দ্বীপ",      en: "Island of Strength",    x: 0.66, y: 0.650, size: 0.98, seed: 2, hue: 14,  sat: 60, light: 76 },
+  { i: 9,  emoji: "⚖️", bn: "ন্যায়ের দ্বীপ",     en: "Island of Fairness",    x: 0.34, y: 0.738, size: 0.93, seed: 3, hue: 176, sat: 40, light: 74 },
+  { i: 10, emoji: "♾️", bn: "চিরকালের দ্বীপ",   en: "Island of Forever",     x: 0.68, y: 0.826, size: 1.00, seed: 4, hue: 215, sat: 48, light: 79 },
+  { i: 11, emoji: "🏔️", bn: "মহিমার দ্বীপ",     en: "Island of Greatness",   x: 0.47, y: 0.930, size: 1.22, seed: 2, hue: 300, sat: 32, light: 81 },
 ];
 
 /* Five coastlines, as closed paths on a 100x100 box centred on 50,50.

@@ -77,9 +77,10 @@ function encodePng(width, height, rgba) {
 
 /* ---------------- the icon: a gold crescent over a night sky ---------------- */
 
-const SKY_TOP    = [29, 18, 64];
-const SKY_BOTTOM = [11, 16, 38];
-const GOLD       = [244, 201, 93];
+// warm cream sky and an apricot-gold moon, matching the playroom palette
+const SKY_TOP    = [255, 253, 246];
+const SKY_BOTTOM = [246, 230, 205];
+const GOLD       = [232, 152, 48];
 
 // fixed sprinkle so every build produces an identical icon
 const ICON_STARS = [
@@ -157,14 +158,14 @@ function drawIcon(size, opts = {}) {
         col = mix(SKY_TOP, SKY_BOTTOM, yy);
         const gx = xx - cx, gy = yy - cy;
         const glow = Math.max(0, 1 - Math.sqrt(gx * gx + gy * gy) / (0.62 * scale));
-        col = mix(col, [58, 44, 110], glow * glow * 0.55);
+        col = mix(col, [253, 224, 178], glow * glow * 0.75);
         if (moon > 0) col = mix(col, GOLD, moon);
-        if (star > 0) col = mix(col, [255, 252, 240], star * 0.9);
+        if (star > 0) col = mix(col, [99, 192, 209], star * 0.85);
         alpha = 255;
       } else {
         // foreground only: the moon and the stars, nothing behind them
         const ink = Math.max(moon, star);
-        col = star > moon ? [255, 252, 240] : GOLD;
+        col = star > moon ? [99, 192, 209] : GOLD;
         alpha = Math.round(ink * 255);
       }
 
@@ -209,8 +210,8 @@ function build() {
     scope: ".",
     display: "standalone",
     orientation: "portrait",
-    background_color: "#0b1026",
-    theme_color: "#0b1026",
+    background_color: "#fbf6ec",
+    theme_color: "#fbf6ec",
     lang: "bn",
     icons: [
       { src: icon192, sizes: "192x192", type: "image/png", purpose: "any" },
@@ -319,7 +320,7 @@ function writeAndroidIcons() {
   fs.writeFileSync(
     path.join(values, "ic_launcher_background.xml"),
     '<?xml version="1.0" encoding="utf-8"?>\n<resources>\n' +
-    '    <color name="ic_launcher_background">#141A3A</color>\n</resources>\n',
+    '    <color name="ic_launcher_background">#FBF6EC</color>\n</resources>\n',
     "utf8"
   );
 

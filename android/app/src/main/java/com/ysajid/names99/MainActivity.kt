@@ -136,9 +136,14 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // light bars: the app is cream now, so the system icons must be dark
         enableEdgeToEdge(
-            statusBarStyle = androidx.activity.SystemBarStyle.dark(Color.Transparent.value.toInt()),
-            navigationBarStyle = androidx.activity.SystemBarStyle.dark(Color.Transparent.value.toInt()),
+            statusBarStyle = androidx.activity.SystemBarStyle.light(
+                android.graphics.Color.TRANSPARENT, android.graphics.Color.BLACK,
+            ),
+            navigationBarStyle = androidx.activity.SystemBarStyle.light(
+                android.graphics.Color.TRANSPARENT, android.graphics.Color.BLACK,
+            ),
         )
 
         val store = Store(applicationContext)
@@ -167,7 +172,7 @@ private fun App(state: JourneyState, onExit: () -> Unit) {
         }
     }
 
-    NightBackdrop {
+    DayBackdrop {
         when (state.screen) {
             Screen.Profiles -> ProfilesScreen(state)
             Screen.Map -> MapScreen(state)

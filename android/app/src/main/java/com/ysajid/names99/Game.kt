@@ -194,16 +194,16 @@ private fun Tile(
         when (tile) {
             TileState.Right -> Palette.green
             TileState.Wrong -> Palette.rose
-            TileState.Picked -> Palette.gold
+            TileState.Picked -> Palette.goldDeep
             TileState.Idle -> Palette.cardLine
         },
         label = "edge",
     )
     val fill by animateColorAsState(
         when (tile) {
-            TileState.Right -> Palette.green.copy(alpha = 0.16f)
-            TileState.Wrong -> Palette.rose.copy(alpha = 0.14f)
-            TileState.Picked -> Palette.gold.copy(alpha = 0.16f)
+            TileState.Right -> Color(0xFFEAF7EE)
+            TileState.Wrong -> Color(0xFFFDEEEC)
+            TileState.Picked -> Color(0xFFFDF3E2)
             TileState.Idle -> Palette.card
         },
         label = "fill",
@@ -223,7 +223,7 @@ private fun Tile(
     ) {
         Text(
             text,
-            color = if (arabic) Palette.gold else Palette.ink,
+            color = if (arabic) Palette.teal else Palette.ink,
             fontSize = if (arabic) 28.sp else 16.sp,
             lineHeight = if (arabic) 44.sp else 24.sp,
             fontWeight = if (arabic) FontWeight.Normal else FontWeight.SemiBold,

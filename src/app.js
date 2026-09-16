@@ -322,6 +322,14 @@
   var MAP_H = 300;          // chart height — taller than the screen, so you scroll it
   var ISLE_W = 26;          // an island's width at size 1
 
+  /* One island colour, lightened or darkened. Keeps every face of the land
+     on the same hue so it reads as one object lit from one side. */
+  function shade(isl, dl, ds) {
+    var sat = Math.max(0, Math.min(100, isl.sat + (ds || 0)));
+    var light = Math.max(0, Math.min(100, isl.light + dl));
+    return "hsl(" + isl.hue + " " + sat + "% " + light + "%)";
+  }
+
   function mapX(isl) { return isl.x * MAP_W; }
   function mapY(isl) { return isl.y * MAP_H; }
 
@@ -346,39 +354,42 @@
   function oceanDefs() {
     var defs = svgEl("defs");
 
-    var deep = svgEl("linearGradient", { id: "deep", x1: "0", y1: "0", x2: "0.3", y2: "1" });
-    [["0%", "#16204d"], ["35%", "#0e1738"], ["70%", "#0a1130"], ["100%", "#070c22"]]
+    // shallow tropical water: pale at the top where the sun is, deeper below
+    var water = svgEl("linearGradient", { id: "water", x1: "0", y1: "0", x2: "0.25", y2: "1" });
+    [["0%", "#cdeaf1"], ["30%", "#a9dce8"], ["68%", "#7ec9da"], ["100%", "#5fb7cc"]]
       .forEach(function (stop) {
-        deep.appendChild(svgEl("stop", { offset: stop[0], "stop-color": stop[1] }));
+        water.appendChild(svgEl("stop", { offset: stop[0], "stop-color": stop[1] }));
       });
-    defs.appendChild(deep);
+    defs.appendChild(water);
 
-    // the moon, off the top-left, and the light it lays on the water
-    var moon = svgEl("radialGradient", { id: "moonglow" });
-    moon.appendChild(svgEl("stop", { offset: "0%", "stop-color": "#f4c95d", "stop-opacity": ".30" }));
-    moon.appendChild(svgEl("stop", { offset: "60%", "stop-color": "#f4c95d", "stop-opacity": ".07" }));
-    moon.appendChild(svgEl("stop", { offset: "100%", "stop-color": "#f4c95d", "stop-opacity": "0" }));
-    defs.appendChild(moon);
+    // sunlight off the top corner
+    var sun = svgEl("radialGradient", { id: "sunglow" });
+    sun.appendChild(svgEl("stop", { offset: "0%", "stop-color": "#fffdf0", "stop-opacity": ".72" }));
+    sun.appendChild(svgEl("stop", { offset: "55%", "stop-color": "#fff6d8", "stop-opacity": ".22" }));
+    sun.appendChild(svgEl("stop", { offset: "100%", "stop-color": "#fff6d8", "stop-opacity": "0" }));
+    defs.appendChild(sun);
 
     ISLANDS.forEach(function (isl) {
-      // lit from the top-left, like the moon is
+      // lit from the top-left, like the sun is
       var g = svgEl("linearGradient", { id: "land" + isl.i, x1: "0.2", y1: "0", x2: "0.8", y2: "1" });
-      g.appendChild(svgEl("stop", { offset: "0%", "stop-color": "hsl(" + isl.hue + " 46% 46%)" }));
-      g.appendChild(svgEl("stop", { offset: "55%", "stop-color": "hsl(" + isl.hue + " 42% 33%)" }));
-      g.appendChild(svgEl("stop", { offset: "100%", "stop-color": "hsl(" + isl.hue + " 40% 24%)" }));
+      g.appendChild(svgEl("stop", { offset: "0%", "stop-color": shade(isl, 8) }));
+      g.appendChild(svgEl("stop", { offset: "55%", "stop-color": shade(isl, 0) }));
+      g.appendChild(svgEl("stop", { offset: "100%", "stop-color": shade(isl, -9) }));
       defs.appendChild(g);
 
+      // the paler ring of water an island sits in
       var shallow = svgEl("radialGradient", { id: "shallow" + isl.i });
-      shallow.appendChild(svgEl("stop", { offset: "40%", "stop-color": "hsl(" + isl.hue + " 45% 45%)", "stop-opacity": ".00" }));
-      shallow.appendChild(svgEl("stop", { offset: "62%", "stop-color": "hsl(185 60% 55%)", "stop-opacity": ".22" }));
-      shallow.appendChild(svgEl("stop", { offset: "100%", "stop-color": "hsl(190 60% 50%)", "stop-opacity": "0" }));
+      shallow.appendChild(svgEl("stop", { offset: "38%", "stop-color": "#e6f7f3", "stop-opacity": "0" }));
+      shallow.appendChild(svgEl("stop", { offset: "60%", "stop-color": "#dff5f0", "stop-opacity": ".70" }));
+      shallow.appendChild(svgEl("stop", { offset: "100%", "stop-color": "#cfeef0", "stop-opacity": "0" }));
       defs.appendChild(shallow);
     });
 
-    var fog = svgEl("radialGradient", { id: "fog" });
-    fog.appendChild(svgEl("stop", { offset: "35%", "stop-color": "#8f9ac4", "stop-opacity": ".20" }));
-    fog.appendChild(svgEl("stop", { offset: "100%", "stop-color": "#8f9ac4", "stop-opacity": "0" }));
-    defs.appendChild(fog);
+    // islands not reached yet sit under a haze
+    var haze = svgEl("radialGradient", { id: "haze" });
+    haze.appendChild(svgEl("stop", { offset: "35%", "stop-color": "#ffffff", "stop-opacity": ".62" }));
+    haze.appendChild(svgEl("stop", { offset: "100%", "stop-color": "#ffffff", "stop-opacity": "0" }));
+    defs.appendChild(haze);
 
     return defs;
   }
@@ -395,9 +406,9 @@
       g.appendChild(svgEl("path", {
         d: d,
         fill: "none",
-        stroke: "#7fb4d8",
-        "stroke-width": y % 11 < 5.5 ? 0.22 : 0.13,
-        "stroke-opacity": 0.11,
+        stroke: "#ffffff",
+        "stroke-width": y % 11 < 5.5 ? 0.26 : 0.15,
+        "stroke-opacity": 0.30,
         "stroke-linecap": "round",
       }));
     }
@@ -413,37 +424,37 @@
     svg.appendChild(svgEl("ellipse", {
       cx: 50, cy: 52,
       rx: open ? 64 : 50, ry: open ? 44 : 34,
-      fill: open ? "url(#shallow" + isl.i + ")" : "url(#fog)",
+      fill: open ? "url(#shallow" + isl.i + ")" : "url(#haze)",
     }));
 
     // the cliff side: a darker copy pushed down. This is what reads as depth.
     svg.appendChild(svgEl("path", {
       d: coast,
       transform: "translate(0,10)",
-      fill: open ? "hsl(" + isl.hue + " 38% 14%)" : "#252c4b",
-      opacity: open ? 1 : 0.5,
+      fill: open ? shade(isl, -26, 6) : "#a9b6bd",
+      opacity: open ? 1 : 0.55,
     }));
     // a pale beach where land meets water
     svg.appendChild(svgEl("path", {
       d: coast,
       transform: "translate(0,3.5)",
       fill: "none",
-      stroke: "#e7dfc6",
-      "stroke-width": 3,
-      "stroke-opacity": open ? 0.22 : 0.06,
+      stroke: "#fdf3dd",
+      "stroke-width": 3.4,
+      "stroke-opacity": open ? 0.85 : 0.3,
     }));
     // the lit top face
     svg.appendChild(svgEl("path", {
       d: coast,
-      fill: open ? "url(#land" + isl.i + ")" : "#363d66",
-      opacity: open ? 1 : 0.62,
+      fill: open ? "url(#land" + isl.i + ")" : "#c6d2d8",
+      opacity: open ? 1 : 0.72,
     }));
     svg.appendChild(svgEl("path", {
       d: coast,
       fill: "none",
-      stroke: open ? "hsl(" + isl.hue + " 58% 64%)" : "#5a628c",
+      stroke: open ? shade(isl, 12, -6) : "#dfe7ea",
       "stroke-width": 2,
-      "stroke-opacity": open ? 0.45 : 0.25,
+      "stroke-opacity": open ? 0.7 : 0.4,
     }));
 
     return svg;
@@ -470,8 +481,8 @@
       "aria-hidden": "true",
     });
     sea.appendChild(oceanDefs());
-    sea.appendChild(svgEl("rect", { x: 0, y: 0, width: MAP_W, height: MAP_H, fill: "url(#deep)" }));
-    sea.appendChild(svgEl("ellipse", { cx: 18, cy: 12, rx: 72, ry: 58, fill: "url(#moonglow)" }));
+    sea.appendChild(svgEl("rect", { x: 0, y: 0, width: MAP_W, height: MAP_H, fill: "url(#water)" }));
+    sea.appendChild(svgEl("ellipse", { cx: 20, cy: 10, rx: 74, ry: 56, fill: "url(#sunglow)" }));
     sea.appendChild(swell());
 
     for (var k = 0; k < ISLANDS.length - 1; k++) {
@@ -480,9 +491,9 @@
       sea.appendChild(svgEl("path", {
         d: legPath(from, to, k % 2 ? 7 : -7),
         fill: "none",
-        stroke: sailed ? "#f4c95d" : "#9fb0d8",
-        "stroke-width": sailed ? 0.7 : 0.5,
-        "stroke-opacity": sailed ? 0.75 : 0.26,
+        stroke: sailed ? "#e08c2c" : "#ffffff",
+        "stroke-width": sailed ? 0.75 : 0.55,
+        "stroke-opacity": sailed ? 0.9 : 0.6,
         "stroke-linecap": "round",
         "stroke-dasharray": "2.4 3.2",
       }));
@@ -498,7 +509,6 @@
       btn.style.left = isl.x * 100 + "%";
       btn.style.top = isl.y * 100 + "%";
       btn.style.width = (ISLE_W * 1.32 * isl.size) + "%";
-      btn.style.setProperty("--h", isl.hue);
       btn.style.setProperty("--bob", (-isl.seed * 1.3) + "s");
 
       var art = make("div", "art");
@@ -797,20 +807,27 @@
     el("sheet").classList.add("on");
   }
 
-  /* ---------- sky ---------- */
+  /* ---------- the light behind everything ---------- */
 
-  function sprinkleStars() {
-    var sky = el("stars");
+  /* Soft shapes drifting slowly, in the colours of the rug. Replaces the
+     star field, which needed a dark screen to read at all. */
+  function sprinkleBokeh() {
+    var sky = el("bokeh");
+    if (!sky) return;
+    var tints = ["#f7cdb0", "#cdbfe0", "#a9dcc4", "#f5ce63", "#9fd8e4", "#f0907a"];
     var frag = document.createDocumentFragment();
-    for (var k = 0; k < 70; k++) {
-      var s = make("i");
-      s.style.left = (Math.random() * 100) + "%";
-      s.style.top = (Math.random() * 100) + "%";
-      s.style.animationDelay = (Math.random() * 4) + "s";
-      var size = Math.random() < 0.15 ? 3 : 2;
-      s.style.width = size + "px";
-      s.style.height = size + "px";
-      frag.appendChild(s);
+    for (var k = 0; k < 10; k++) {
+      var b = make("i");
+      var size = 70 + (k % 5) * 40;
+      b.style.width = size + "px";
+      b.style.height = size + "px";
+      b.style.left = ((k * 37) % 100) + "%";
+      b.style.top = ((k * 53) % 100) + "%";
+      b.style.background = tints[k % tints.length];
+      b.style.opacity = k % 3 === 0 ? ".13" : ".09";
+      b.style.animationDelay = (-k * 1.7) + "s";
+      b.style.animationDuration = (18 + (k % 4) * 5) + "s";
+      frag.appendChild(b);
     }
     sky.appendChild(frag);
   }
@@ -818,7 +835,7 @@
   /* ---------- wiring ---------- */
 
   function boot() {
-    sprinkleStars();
+    sprinkleBokeh();
     document.documentElement.lang = S.lang === "bn" ? "bn" : "en";
     paintLangButtons();
 

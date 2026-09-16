@@ -16,43 +16,56 @@ import androidx.compose.ui.graphics.Color
 import kotlin.math.abs
 import kotlin.random.Random
 
-private data class Star(val x: Float, val y: Float, val r: Float, val phase: Float)
+private data class Blob(val x: Float, val y: Float, val r: Float, val tint: Color, val phase: Float)
 
-/** Seventy slow stars. They never flash, because this gets used at bedtime. */
+/**
+ * Soft shapes drifting behind everything, like light through a window.
+ *
+ * Deliberately very faint: in a large empty area anything stronger reads as
+ * a stain rather than as light. Replaces the star field, which needed a dark
+ * screen to read at all.
+ */
 @Composable
-fun StarField(count: Int = 70) {
-    val stars = remember {
+fun SoftLight(count: Int = 10) {
+    val tints = remember {
+        listOf(
+            Color(0xFFF7CDB0), Color(0xFFCDBFE0), Color(0xFFA9DCC4),
+            Color(0xFFF5CE63), Color(0xFF9FD8E4), Color(0xFFF0907A),
+        )
+    }
+    val blobs = remember {
         val rng = Random(99)
-        List(count) {
-            Star(
+        List(count) { k ->
+            Blob(
                 x = rng.nextFloat(),
                 y = rng.nextFloat(),
-                r = if (rng.nextFloat() < 0.15f) 2.2f else 1.5f,
+                r = 70f + (k % 5) * 40f,
+                tint = tints[k % tints.size],
                 phase = rng.nextFloat(),
             )
         }
     }
 
-    val transition = rememberInfiniteTransition(label = "twinkle")
+    val transition = rememberInfiniteTransition(label = "drift")
     val t by transition.animateFloat(
         initialValue = 0f,
         targetValue = 1f,
         animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 4000),
+            animation = tween(durationMillis = 22000),
             repeatMode = RepeatMode.Restart,
         ),
         label = "t",
     )
 
     Canvas(Modifier.fillMaxSize()) {
-        stars.forEach { star ->
-            // triangle wave, so the fade in and out are the same speed
-            val phase = (t + star.phase) % 1f
-            val alpha = 0.18f + 0.57f * (1f - abs(phase * 2f - 1f))
+        blobs.forEachIndexed { k, blob ->
+            val phase = (t + blob.phase) % 1f
+            // triangle wave, so the rise and fall are the same speed
+            val lift = (1f - abs(phase * 2f - 1f)) * 14f * density
             drawCircle(
-                color = Color.White.copy(alpha = alpha),
-                radius = star.r * density,
-                center = Offset(star.x * size.width, star.y * size.height),
+                color = blob.tint.copy(alpha = if (k % 3 == 0) 0.13f else 0.09f),
+                radius = blob.r * density,
+                center = Offset(blob.x * size.width, blob.y * size.height - lift),
             )
         }
     }

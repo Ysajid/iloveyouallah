@@ -30,7 +30,16 @@ data class Island(
     val emoji: String,
     private val bn: String,
     private val en: String,
+    /** Its colour, taken from the playroom arch and rug. */
     val hue: Float,
+    val sat: Float,
+    val light: Float,
+    /** Where it sits on the chart: 0..1 across, 0..1 down the route. */
+    val x: Float,
+    val y: Float,
+    val size: Float,
+    /** Which of the five coastlines it gets. */
+    val seed: Int,
 ) {
     fun title(lang: Lang): String = if (lang == Lang.BN) bn else en
 }
@@ -65,6 +74,12 @@ class Journey(val islands: List<Island>, val names: List<NameEntry>) {
                     bn = o.getString("bn"),
                     en = o.getString("en"),
                     hue = o.getDouble("hue").toFloat(),
+                    sat = o.getDouble("sat").toFloat(),
+                    light = o.getDouble("light").toFloat(),
+                    x = o.getDouble("x").toFloat(),
+                    y = o.getDouble("y").toFloat(),
+                    size = o.getDouble("size").toFloat(),
+                    seed = o.getInt("seed"),
                 )
             }
 

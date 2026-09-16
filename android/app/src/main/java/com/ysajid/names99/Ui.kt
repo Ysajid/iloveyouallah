@@ -54,7 +54,7 @@ fun GoldButton(
     ) {
         Text(
             text,
-            color = Color(0xFF241A02),
+            color = Palette.onGold,
             fontSize = 17.sp,
             fontWeight = FontWeight.Bold,
             textAlign = TextAlign.Center,
@@ -123,7 +123,7 @@ fun LangToggle(lang: Lang, onChange: (Lang) -> Unit) {
             ) {
                 Text(
                     label,
-                    color = if (on) Color(0xFF241A02) else Palette.inkFaint,
+                    color = if (on) Palette.onGold else Palette.inkFaint,
                     fontWeight = FontWeight.Bold,
                     fontSize = 15.sp,
                 )
@@ -165,7 +165,7 @@ fun StarRow(filled: Int, size: Int = 18, spacing: Int = 4) {
         repeat(3) { k ->
             Text(
                 "★",
-                color = if (k < filled) Palette.gold else Palette.gold.copy(alpha = 0.22f),
+                color = if (k < filled) Palette.goldDeep else Palette.emptyStar,
                 fontSize = size.sp,
             )
         }
@@ -180,19 +180,17 @@ fun TodayBox(label: String, text: String, modifier: Modifier = Modifier) {
             .fillMaxWidth()
             .clip(RoundedCornerShape(22.dp))
             .background(
-                Brush.verticalGradient(
-                    listOf(Palette.gold.copy(alpha = 0.17f), Palette.gold.copy(alpha = 0.06f))
-                )
+                Brush.verticalGradient(listOf(Color(0xFFFDF0CF), Color(0xFFFBE3C0)))
             )
             .border(
-                BorderStroke(1.dp, Palette.gold.copy(alpha = 0.30f)),
+                BorderStroke(1.dp, Color(0xFFEDC98A)),
                 RoundedCornerShape(22.dp),
             )
             .padding(horizontal = 20.dp, vertical = 18.dp),
     ) {
         Text(
             label.uppercase(),
-            color = Palette.gold,
+            color = Color(0xFF8F5F13),
             fontSize = 12.sp,
             letterSpacing = 1.6.sp,
             fontWeight = FontWeight.ExtraBold,
@@ -200,7 +198,7 @@ fun TodayBox(label: String, text: String, modifier: Modifier = Modifier) {
         Spacer(Modifier.height(8.dp))
         Text(
             text,
-            color = Palette.ink,
+            color = Color(0xFF4C3A1C),
             fontSize = 20.sp,
             lineHeight = 32.sp,
             fontWeight = FontWeight.SemiBold,
@@ -225,7 +223,7 @@ fun NameBody(
         Spacer(Modifier.height(10.dp))
         Text(
             entry.arabic,
-            color = Palette.gold,
+            color = Palette.teal,
             fontSize = 52.sp,
             lineHeight = 78.sp,
             textAlign = TextAlign.Center,
@@ -278,11 +276,7 @@ fun GlassCard(
         modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(26.dp))
-            .background(
-                Brush.verticalGradient(
-                    listOf(Color(0x1CFFFFFF), Color(0x0BFFFFFF))
-                )
-            )
+            .background(Palette.card)
             .border(BorderStroke(1.dp, Palette.cardLine), RoundedCornerShape(26.dp))
             .padding(padding),
         horizontalAlignment = Alignment.CenterHorizontally,
