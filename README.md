@@ -20,14 +20,30 @@ ordered list is there for looking things up.
 
 ---
 
+## Two builds, one set of words
+
+There are two front doors to the same content:
+
+- **`dist/99-names.html`** — the single-file web app from the original plan.
+  Copy it to a tablet, open it, add to home screen.
+- **`android/`** — a native Android app. Kotlin and Jetpack Compose, installs
+  from an APK, sits in the launcher like anything else. See
+  [android/README.md](android/README.md).
+
+Both read their names from `src/names.js`. `node build.js` rebuilds both.
+Edit the Bangla once and it lands in both places.
+
+They keep separate progress — a child who did five islands in the browser
+starts again in the native app. Pick one and stay in it.
+
 ## Where it stands
 
 | Step | State |
 | --- | --- |
 | Bangla pass — 99 × 3 lines | **done**, first pass, needs my read-through |
-| Progress sticks (localStorage) | **done** |
-| Home screen / icon / manifest | **done** |
-| Profiles (one tablet, separate journeys) | **done** |
+| Progress sticks | **done** — localStorage on web, SharedPreferences on Android |
+| Onto their device | **done** — add to home screen, or install the APK |
+| Profiles (one tablet, separate journeys) | **done**, both builds |
 | My voice on the names | **hooks in, clips not recorded** |
 
 Decisions that were open in the plan, now settled:
@@ -94,8 +110,9 @@ textbook rather than me talking at bedtime, it's wrong — rewrite it.
 
 ## Adding your voice later
 
-The card looks for `audio/NN.mp3` next to the HTML file, where `NN` is the
-**traditional number** of the name, zero-padded to two digits:
+Both builds look for `NN.mp3`, where `NN` is the **traditional number** of the
+name, zero-padded to two digits. On the web that is an `audio/` folder next to
+the HTML file; on Android it is `android/app/src/main/assets/audio/`.
 
 ```
 99-names.html
@@ -118,14 +135,19 @@ once everything else works. It does work now.)
 ## How it's put together
 
 ```
-src/names.js       the 99 names — the file to edit
-src/islands.js     the eleven islands
-src/app.js         screens, unlocking, stars, the game, storage
-src/styles.css     styling
-src/template.html  the shell
-build.js           inlines all of the above into one file + draws the icon
-dist/99-names.html the built app (committed, so it's always there to copy)
+src/names.js        the 99 names — the file to edit
+src/islands.js      the eleven islands
+src/app.js          web: screens, unlocking, stars, the game, storage
+src/styles.css      web: styling
+src/template.html   web: the shell
+build.js            builds everything, and draws the icons
+dist/99-names.html  the built web app (committed, so it's always there to copy)
+android/            the native app (see android/README.md)
 ```
+
+`node build.js` does three things: inlines the web app into one HTML file,
+writes `android/app/src/main/assets/names.json`, and draws the crescent icon
+at every size both builds need.
 
 The build has no npm dependencies. `build.js` writes the PNG icons itself so
 there's nothing to install — plain `node build.js` on any machine with Node.
