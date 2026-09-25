@@ -21,8 +21,8 @@ const ROSE := Color("dd6459")
 const EMPTY_STAR := Color("dccfb6")
 
 const BEACH := Color("f6e6c4")
-const WATER_SHALLOW := Color("bfe8ef")
-const WATER_DEEP := Color("3f9fb8")
+const WATER_SHALLOW := Color("74c2d2")
+const WATER_DEEP := Color("1f6b84")
 const SUN := Color("fff6dc")
 
 ## One island's colour, lightened or darkened. Every face stays on one hue so

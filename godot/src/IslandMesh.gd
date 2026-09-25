@@ -8,7 +8,7 @@ extends RefCounted
 ## are what make it read as a toy rather than a blob.
 
 const SEGMENTS := 48      # around the island
-const RINGS := 7          # centre out to the shore
+const RINGS := 10         # centre out to the shore
 const SKIRT_DROP := 1.35  # how far the cliff falls below the waterline
 
 
@@ -17,16 +17,19 @@ const SKIRT_DROP := 1.35  # how far the cliff falls below the waterline
 static func _radius_at(angle: float, seed_value: int) -> float:
 	var rng := seed_value * 1.7
 	return 1.0 \
-		+ 0.14 * sin(angle * 2.0 + rng) \
-		+ 0.09 * sin(angle * 3.0 - rng * 1.3) \
-		+ 0.05 * sin(angle * 5.0 + rng * 0.7)
+		+ 0.11 * sin(angle * 2.0 + rng) \
+		+ 0.07 * sin(angle * 3.0 - rng * 1.3) \
+		+ 0.035 * sin(angle * 5.0 + rng * 0.7)
 
 
 ## Height above the waterline, as a fraction of the island radius.
 static func _height_at(t: float) -> float:
-	# flat-ish shore rising to a soft dome, so it looks walkable not conical
+	# a plateau with a rounded shoulder falling to a flat beach — a cone reads
+	# as a pimple, and these are meant to look like somewhere you could stand
 	var d := clampf(t, 0.0, 1.0)
-	return pow(cos(d * PI * 0.5), 1.6)
+	var plateau := 1.0 - smoothstep(0.34, 0.95, d)
+	var dome := 1.0 - 0.45 * d * d
+	return plateau * dome
 
 
 static func build(isl: Dictionary, radius: float, height: float) -> ArrayMesh:
@@ -39,8 +42,25 @@ static func build(isl: Dictionary, radius: float, height: float) -> ArrayMesh:
 	var low := Palette.island_colour(isl, -10.0, 4.0)
 	var cliff := Palette.island_colour(isl, -26.0, 6.0)
 
-	# --- the top surface, ring by ring ---
-	for ring in RINGS:
+	# --- the cap, as a proper fan from a single apex ---
+	var apex := Vector3(0.0, _height_at(0.0) * height, 0.0)
+	var t_first := 1.0 / float(RINGS)
+	for seg in SEGMENTS:
+		var a0 := TAU * float(seg) / float(SEGMENTS)
+		var a1 := TAU * float(seg + 1) / float(SEGMENTS)
+		var r0 := _radius_at(a0, seed_value) * radius * t_first
+		var r1 := _radius_at(a1, seed_value) * radius * t_first
+		var y := _height_at(t_first) * height
+		_tri(
+			st,
+			apex,
+			Vector3(cos(a0) * r0, y, sin(a0) * r0),
+			Vector3(cos(a1) * r1, y, sin(a1) * r1),
+			top, top, top,
+		)
+
+	# --- the rest of the top surface, ring by ring ---
+	for ring in range(1, RINGS):
 		var t0 := float(ring) / float(RINGS)
 		var t1 := float(ring + 1) / float(RINGS)
 		for seg in SEGMENTS:
@@ -55,8 +75,8 @@ static func build(isl: Dictionary, radius: float, height: float) -> ArrayMesh:
 			var p11 := Vector3(cos(a1) * r1 * t1, _height_at(t1) * height, sin(a1) * r1 * t1)
 
 			# sand at the waterline, the island's own colour inland
-			var c_inner := top.lerp(mid, t0) if t0 < 0.7 else mid.lerp(Palette.BEACH, (t0 - 0.7) / 0.3)
-			var c_outer := top.lerp(mid, t1) if t1 < 0.7 else mid.lerp(Palette.BEACH, (t1 - 0.7) / 0.3)
+			var c_inner := _shade_at(t0, top, mid)
+			var c_outer := _shade_at(t1, top, mid)
 
 			_tri(st, p00, p10, p11, c_inner, c_outer, c_outer)
 			_tri(st, p00, p11, p01, c_inner, c_outer, c_inner)
@@ -79,6 +99,13 @@ static func build(isl: Dictionary, radius: float, height: float) -> ArrayMesh:
 
 	st.generate_normals()
 	return st.commit()
+
+
+## Island colour inland, a clear band of sand at the waterline.
+static func _shade_at(t: float, top: Color, mid: Color) -> Color:
+	if t < 0.82:
+		return top.lerp(mid, t / 0.82)
+	return mid.lerp(Palette.BEACH, (t - 0.82) / 0.18)
 
 
 ## One flat-shaded triangle. Normals come from the face, never averaged.

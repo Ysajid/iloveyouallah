@@ -38,16 +38,16 @@ void fragment() {
 		nearest = min(nearest, d);
 	}
 
-	float shore = 1.0 - smoothstep(0.0, 5.5, max(nearest, 0.0));
+	float shore = 1.0 - smoothstep(0.0, 1.1, max(nearest, 0.0));
 	vec3 base = mix(deep_colour, shallow_colour, shore);
 
 	// a band of foam that breathes in and out against the shore
 	float t = TIME * wave_speed;
-	float band = 1.0 - smoothstep(0.0, 1.5, abs(nearest - 0.55 - sin(t * 0.9) * 0.22));
-	float texture_noise = 0.5 + 0.5 * ripple(world_pos.xz * 2.3, t * 1.4);
-	float foam = clamp(band * texture_noise * 1.2, 0.0, 1.0);
+	float band = 1.0 - smoothstep(0.0, 0.34, abs(nearest - 0.25 - sin(t * 0.9) * 0.09));
+	float texture_noise = 0.55 + 0.45 * ripple(world_pos.xz * 2.3, t * 1.4);
+	float foam = clamp(band * texture_noise, 0.0, 1.0);
 
-	ALBEDO = mix(base, foam_colour, foam * 0.85);
+	ALBEDO = mix(base, foam_colour, foam * 0.45);
 	ROUGHNESS = mix(0.10, 0.45, foam);
-	SPECULAR = 0.45;
+	SPECULAR = 0.2;
 }

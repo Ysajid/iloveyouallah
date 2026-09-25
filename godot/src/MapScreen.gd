@@ -5,23 +5,26 @@ extends Node3D
 
 signal island_chosen(number: int)
 
-const WORLD_W := 46.0      # how wide the archipelago spreads
+const WORLD_W := 40.0      # how wide the archipelago spreads
 const WORLD_L := 168.0     # how far the route runs
-const ISLE_R := 3.1        # a size-1 island's radius
-const ISLE_H := 1.9        # and how tall it stands
+const ISLE_R := 4.4        # a size-1 island's radius
+const ISLE_H := 2.9        # and how tall it stands
 
 var _camera: Camera3D
 var _water_material: ShaderMaterial
 var _islands: Dictionary = {}     # island number -> Node3D
 var _who: String = ""
 var _lang: Journey.Lang = Journey.Lang.BN
-var _focus_z: float = 0.0
-var _target_z: float = 0.0
+var _focus: Vector3 = Vector3.ZERO
+var _target: Vector3 = Vector3.ZERO
 
 
 static func world_position(isl: Dictionary) -> Vector3:
+	# The camera looks along +Z, which puts world -X on the right of the screen.
+	# Flipping here keeps the archipelago the same way round as the web and
+	# Compose builds, so the islands sit where the kids already know them.
 	return Vector3(
-		(float(isl["x"]) - 0.5) * WORLD_W,
+		(0.5 - float(isl["x"])) * WORLD_W,
 		0.0,
 		float(isl["y"]) * WORLD_L,
 	)
@@ -57,7 +60,7 @@ func _build_sky() -> void:
 	env.sky = sky
 
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_SKY
-	env.ambient_light_energy = 1.15
+	env.ambient_light_energy = 0.8
 	env.fog_enabled = true
 	env.fog_mode = Environment.FOG_MODE_DEPTH
 	env.fog_light_color = Color("e8f4f2")
@@ -72,10 +75,19 @@ func _build_sky() -> void:
 	# late-afternoon sun, low enough to throw the islands' shadows sideways
 	var sun := DirectionalLight3D.new()
 	sun.light_color = Color("fff4d8")
-	sun.light_energy = 1.25
+	sun.light_energy = 1.05
 	sun.shadow_enabled = true
-	sun.rotation_degrees = Vector3(-48.0, -38.0, 0.0)
+	sun.rotation_degrees = Vector3(-52.0, -34.0, 0.0)
 	add_child(sun)
+
+	# a cool fill from the opposite side, so the shaded flank of an island
+	# reads as turned-away rather than as a dark smudge
+	var fill := DirectionalLight3D.new()
+	fill.light_color = Color("cfe9f2")
+	fill.light_energy = 0.42
+	fill.shadow_enabled = false
+	fill.rotation_degrees = Vector3(-24.0, 146.0, 0.0)
+	add_child(fill)
 
 
 func _build_water() -> void:
@@ -89,7 +101,6 @@ func _build_water() -> void:
 	_water_material.set_shader_parameter("shallow_colour", Palette.WATER_SHALLOW)
 	_water_material.set_shader_parameter("deep_colour", Palette.WATER_DEEP)
 
-	var isles: Array[Plane] = []
 	var packed: Array = []
 	for isl: Dictionary in Journey.islands:
 		var p := world_position(isl)
@@ -180,20 +191,23 @@ func _look_at_current(immediate: bool) -> void:
 	var isl := current_island()
 	if isl.is_empty():
 		return
-	_target_z = world_position(isl).z
+	_target = world_position(isl)
 	if immediate:
-		_focus_z = _target_z
+		_focus = _target
 		_place_camera()
 
 
 func _place_camera() -> void:
-	# behind and above, tilted down: enough to see the next island or two
-	_camera.position = Vector3(0.0, 19.0, _focus_z - 22.0)
-	_camera.look_at(Vector3(0.0, 0.0, _focus_z + 7.0), Vector3.UP)
+	# Centred on the island you are on, not on the middle of the ocean: it
+	# leans a little toward the archipelago's centre line so the next island
+	# stays in shot.
+	var eye_x: float = _focus.x * 0.55
+	_camera.position = Vector3(eye_x, 12.5, _focus.z - 15.5)
+	_camera.look_at(Vector3(_focus.x * 0.85, 0.6, _focus.z + 4.0), Vector3.UP)
 
 
 func _process(delta: float) -> void:
 	if _camera == null:
 		return
-	_focus_z = lerpf(_focus_z, _target_z, clampf(delta * 2.2, 0.0, 1.0))
+	_focus = _focus.lerp(_target, clampf(delta * 2.2, 0.0, 1.0))
 	_place_camera()
