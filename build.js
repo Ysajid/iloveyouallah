@@ -262,17 +262,23 @@ function writeAndroidData() {
       wrong.map((i) => i.i).join(", "));
   }
 
-  const assets = path.join(__dirname, "android", "app", "src", "main", "assets");
-  fs.mkdirSync(assets, { recursive: true });
   const json = JSON.stringify({
     islands: scope.ISLANDS,
     names: scope.NAMES,
     coasts: scope.COASTS,      // the native chart draws the same coastlines
   });
-  fs.writeFileSync(path.join(assets, "names.json"), json, "utf8");
+  // every build reads the same file, so the Bangla only ever lives in one place
+  const targets = [
+    path.join(__dirname, "android", "app", "src", "main", "assets", "names.json"),
+    path.join(__dirname, "godot", "data", "names.json"),
+  ];
+  for (const target of targets) {
+    fs.mkdirSync(path.dirname(target), { recursive: true });
+    fs.writeFileSync(target, json, "utf8");
+  }
 
   const kb = (Buffer.byteLength(json, "utf8") / 1024).toFixed(0);
-  console.log("built android/.../assets/names.json  (" + kb + " KB, 99 names, 11 islands)");
+  console.log("built names.json for android + godot  (" + kb + " KB, 99 names, 11 islands)");
 }
 
 /* Launcher icons for the native app, drawn from the same crescent as the web

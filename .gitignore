@@ -18,3 +18,8 @@ android/.kotlin/
 # wholesale on every build, so build it instead:
 #   cd android && gradle :app:assembleRelease
 *.apk
+
+# Godot
+godot/.godot/
+godot/android/build/
+godot/export/

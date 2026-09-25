@@ -1,0 +1,36 @@
+; The 99 Names Journey — Godot 4.5
+;
+; GL Compatibility renderer on purpose: it runs on old tablets, and it is
+; what lets this project be rendered and checked on a machine with no GPU.
+
+config_version=5
+
+[application]
+
+config/name="৯৯ নামের যাত্রা"
+config/description="Eleven islands, nine names each, one island a night."
+run/main_scene="res://Main.tscn"
+config/features=PackedStringArray("4.5", "GL Compatibility")
+
+[autoload]
+
+Journey="*res://src/Journey.gd"
+Store="*res://src/Store.gd"
+
+[display]
+
+window/size/viewport_width=1080
+window/size/viewport_height=1920
+window/stretch/mode="canvas_items"
+window/stretch/aspect="expand"
+window/handheld/orientation=1
+
+[internationalization]
+
+locale/include_text_server_data=true
+
+[rendering]
+
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"
+anti_aliasing/quality/msaa_3d=2
