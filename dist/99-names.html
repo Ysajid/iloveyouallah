@@ -890,6 +890,38 @@ const COASTS = [
   "M13,50 C18,34 32,24 50,25 C66,26 80,32 87,44 C93,55 88,68 74,74 C58,81 38,80 25,72 C15,66 11,58 13,50 Z",
   "M15,54 C14,38 26,25 44,23 C60,21 76,24 85,35 C94,46 91,62 80,70 C67,79 47,81 32,75 C20,70 15,63 15,54 Z",
 ];
+
+/* ---------------------------------------------------------------------------
+   The coastline, as points rather than a path string.
+
+   An isometric island is not a picture — it is a shape on the ground that gets
+   projected and extruded, so the drawing code needs the outline as coordinates
+   it can push around. Same harmonics as the old path data, same seed, so the
+   archipelago keeps the shape the kids already know.
+
+   Shared by every build: the web draws these with SVG polygons, and the native
+   build walks the same points into a Path.
+   --------------------------------------------------------------------------- */
+
+/* Radius of the coastline at a given angle, on a unit circle. */
+function coastRadius(angle, seed) {
+  var s = seed * 1.7;
+  return 1
+    + 0.11 * Math.sin(angle * 2 - s)
+    + 0.07 * Math.sin(angle * 3 + s * 1.3)
+    + 0.035 * Math.sin(angle * 5 - s * 0.7);
+}
+
+/* The outline as `count` points, going clockwise on screen. */
+function coastPoints(seed, count) {
+  var pts = [];
+  for (var k = 0; k < count; k++) {
+    var a = (Math.PI * 2 * k) / count;
+    var r = coastRadius(a, seed);
+    pts.push({ x: Math.cos(a) * r, y: Math.sin(a) * r, a: a });
+  }
+  return pts;
+}
 /* The 99 names.
  *
  *   n       position in the traditional order (1-99) — used by the full list
@@ -2145,7 +2177,7 @@ const NAMES = [
 
     ISLANDS.forEach(function (isl) {
       // lit from the top-left, like the sun is
-      var g = svgEl("linearGradient", { id: "land" + isl.i, x1: "0.2", y1: "0", x2: "0.8", y2: "1" });
+      var g = svgEl("linearGradient", { id: "land" + isl.i, x1: "0.15", y1: "0", x2: "0.75", y2: "1" });
       g.appendChild(svgEl("stop", { offset: "0%", "stop-color": shade(isl, 8) }));
       g.appendChild(svgEl("stop", { offset: "55%", "stop-color": shade(isl, 0) }));
       g.appendChild(svgEl("stop", { offset: "100%", "stop-color": shade(isl, -9) }));
@@ -2160,6 +2192,10 @@ const NAMES = [
     });
 
     // islands not reached yet sit under a haze
+    var soften = svgEl("filter", { id: "soften", x: "-30%", y: "-30%", width: "160%", height: "160%" });
+    soften.appendChild(svgEl("feGaussianBlur", { stdDeviation: "2.4" }));
+    defs.appendChild(soften);
+
     var haze = svgEl("radialGradient", { id: "haze" });
     haze.appendChild(svgEl("stop", { offset: "35%", "stop-color": "#ffffff", "stop-opacity": ".62" }));
     haze.appendChild(svgEl("stop", { offset: "100%", "stop-color": "#ffffff", "stop-opacity": "0" }));
@@ -2189,47 +2225,137 @@ const NAMES = [
     return g;
   }
 
-  /* Each island is its own little picture, so it keeps its shape whatever
-     the chart is stretched to. The ocean behind it may stretch freely. */
+  /* ---------------------------------------------------------------------
+     Isometric islands.
+
+     No 3D engine here: the coastline is a shape lying on the ground, and an
+     oblique projection tilts that ground away from the viewer. Squash y,
+     subtract height for z, and an outline becomes a solid you can walk around.
+
+        screen.x = x
+        screen.y = y * SQUASH - z
+
+     The land is then extruded: every coastline edge on the near side becomes
+     a wall, shaded by which way it faces. That per-face shading is what makes
+     it read as a solid object rather than a sticker.
+     --------------------------------------------------------------------- */
+
+  var SQUASH = 0.54;        // how far the ground tilts away
+  var ISLE_H = 0.46;        // island height, as a fraction of its radius
+  var SAMPLES = 44;         // points around the coastline
+  var LIGHT = { x: -0.55, y: -0.83 };   // sun, upper-left
+
+  /* Each island draws in its own <svg>, so it carries its own gradient. */
+  function islandDefs(isl) {
+    var defs = svgEl("defs");
+    var g = svgEl("linearGradient", { id: "top" + isl.i, x1: "0.15", y1: "0", x2: "0.75", y2: "1" });
+    g.appendChild(svgEl("stop", { offset: "0%", "stop-color": shade(isl, 10) }));
+    g.appendChild(svgEl("stop", { offset: "60%", "stop-color": shade(isl, 0) }));
+    g.appendChild(svgEl("stop", { offset: "100%", "stop-color": shade(isl, -7) }));
+    defs.appendChild(g);
+
+    var soften = svgEl("filter", { id: "soft" + isl.i, x: "-40%", y: "-40%", width: "180%", height: "180%" });
+    soften.appendChild(svgEl("feGaussianBlur", { stdDeviation: "2.2" }));
+    defs.appendChild(soften);
+    return defs;
+  }
+
+  function iso(x, y, z) {
+    return { x: x, y: y * SQUASH - z };
+  }
+
+  /* Brightness of a wall facing outward along (nx, ny), 0 dark .. 1 lit. */
+  function faceLight(nx, ny) {
+    var d = nx * LIGHT.x + ny * LIGHT.y;         // -1 facing away .. 1 facing sun
+    return 0.5 + 0.5 * d;
+  }
+
+  function polygon(points, fill, extra) {
+    var attrs = {
+      points: points.map(function (p) { return p.x.toFixed(2) + "," + p.y.toFixed(2); }).join(" "),
+      fill: fill,
+    };
+    for (var k in extra) if (extra.hasOwnProperty(k)) attrs[k] = extra[k];
+    return svgEl("polygon", attrs);
+  }
+
   function islandArt(isl, open) {
-    var svg = svgEl("svg", { viewBox: "-16 -10 132 138", "aria-hidden": "true" });
-    var coast = COASTS[isl.seed % COASTS.length];
+    // needs its own <svg> root: a bare <g> has no SVG context to draw in
+    var svg = svgEl("svg", { viewBox: "0 0 100 100", "aria-hidden": "true" });
+    svg.appendChild(islandDefs(isl));
+    var g = svgEl("g", { class: "isleart" });
+    svg.appendChild(g);
+    var pts = coastPoints(isl.seed, SAMPLES);
 
-    svg.appendChild(svgEl("ellipse", {
-      cx: 50, cy: 52,
-      rx: open ? 64 : 50, ry: open ? 44 : 34,
-      fill: open ? "url(#shallow" + isl.i + ")" : "url(#haze)",
+    // the art box is 2.6 radii wide, leaving room for the shadow and the drop
+    var R = 41;
+    var H = R * ISLE_H;
+    var cx = 50, cy = 44;
+
+    var top = pts.map(function (p) { 
+      var q = iso(p.x * R, p.y * R, H);
+      return { x: cx + q.x, y: cy + q.y };
+    });
+    var base = pts.map(function (p) {
+      var q = iso(p.x * R, p.y * R, 0);
+      return { x: cx + q.x, y: cy + q.y };
+    });
+
+    // --- the shadow it casts on the water ---
+    var shadow = pts.map(function (p) {
+      var q = iso(p.x * R * 1.02, p.y * R * 1.02, 0);
+      return { x: cx + q.x + H * 0.55, y: cy + q.y + H * 0.30 };
+    });
+    g.appendChild(polygon(shadow, open ? "rgba(23,86,104,.22)" : "rgba(23,86,104,.10)"));
+
+    // --- the shallows it sits in ---
+    var shallows = pts.map(function (p) {
+      var q = iso(p.x * R * 1.30, p.y * R * 1.30, 0);
+      return { x: cx + q.x, y: cy + q.y };
+    });
+    g.appendChild(polygon(shallows, open ? "rgba(223,245,240,.62)" : "rgba(255,255,255,.55)", {
+      filter: "url(#soft" + isl.i + ")",
     }));
 
-    // the cliff side: a darker copy pushed down. This is what reads as depth.
-    svg.appendChild(svgEl("path", {
-      d: coast,
-      transform: "translate(0,10)",
-      fill: open ? shade(isl, -26, 6) : "#a9b6bd",
-      opacity: open ? 1 : 0.55,
-    }));
-    // a pale beach where land meets water
-    svg.appendChild(svgEl("path", {
-      d: coast,
-      transform: "translate(0,3.5)",
-      fill: "none",
-      stroke: "#fdf3dd",
-      "stroke-width": 3.4,
-      "stroke-opacity": open ? 0.85 : 0.3,
-    }));
-    // the lit top face
-    svg.appendChild(svgEl("path", {
-      d: coast,
-      fill: open ? "url(#land" + isl.i + ")" : "#c6d2d8",
-      opacity: open ? 1 : 0.72,
-    }));
-    svg.appendChild(svgEl("path", {
-      d: coast,
-      fill: "none",
-      stroke: open ? shade(isl, 12, -6) : "#dfe7ea",
-      "stroke-width": 2,
-      "stroke-opacity": open ? 0.7 : 0.4,
-    }));
+    // --- the walls, near side only, each shaded by the way it faces ---
+    for (var k = 0; k < SAMPLES; k++) {
+      var j = (k + 1) % SAMPLES;
+      // outward normal of this edge, on the ground plane
+      var nx = (pts[k].x + pts[j].x) / 2;
+      var ny = (pts[k].y + pts[j].y) / 2;
+      var len = Math.hypot(nx, ny) || 1;
+      nx /= len; ny /= len;
+      if (ny <= 0) continue;               // facing away: hidden behind the top
+
+      var lit = faceLight(nx, ny);
+      var wall = open
+        ? shade(isl, -16 - 16 * (1 - lit), 4)
+        : "hsl(205 12% " + (58 + 10 * lit).toFixed(0) + "%)";
+      g.appendChild(polygon([top[k], top[j], base[j], base[k]], wall));
+    }
+
+    // --- a band of sand just above the waterline ---
+    var sandTop = pts.map(function (p) {
+      var q = iso(p.x * R, p.y * R, H * 0.26);
+      return { x: cx + q.x, y: cy + q.y };
+    });
+    for (var m = 0; m < SAMPLES; m++) {
+      var n = (m + 1) % SAMPLES;
+      var sx = (pts[m].x + pts[n].x) / 2, sy = (pts[m].y + pts[n].y) / 2;
+      var sl = Math.hypot(sx, sy) || 1;
+      if (sy / sl <= 0) continue;
+      g.appendChild(polygon([sandTop[m], sandTop[n], base[n], base[m]],
+        open ? "#f3e2bd" : "#dfe6e9"));
+    }
+
+    // --- the top: the island's own colour, lit from the upper left ---
+    g.appendChild(polygon(top, open ? "url(#top" + isl.i + ")" : "#cfd9de"));
+    // a soft inner highlight so the top does not read as flat card
+    var crown = pts.map(function (p) {
+      var q = iso(p.x * R * 0.62, p.y * R * 0.62 - R * 0.10, H);
+      return { x: cx + q.x, y: cy + q.y };
+    });
+    g.appendChild(polygon(crown, open ? shade(isl, 9) : "#dae2e6", { opacity: open ? 0.55 : 0.4 }));
 
     return svg;
   }

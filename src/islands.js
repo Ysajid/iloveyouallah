@@ -36,3 +36,35 @@ const COASTS = [
   "M13,50 C18,34 32,24 50,25 C66,26 80,32 87,44 C93,55 88,68 74,74 C58,81 38,80 25,72 C15,66 11,58 13,50 Z",
   "M15,54 C14,38 26,25 44,23 C60,21 76,24 85,35 C94,46 91,62 80,70 C67,79 47,81 32,75 C20,70 15,63 15,54 Z",
 ];
+
+/* ---------------------------------------------------------------------------
+   The coastline, as points rather than a path string.
+
+   An isometric island is not a picture — it is a shape on the ground that gets
+   projected and extruded, so the drawing code needs the outline as coordinates
+   it can push around. Same harmonics as the old path data, same seed, so the
+   archipelago keeps the shape the kids already know.
+
+   Shared by every build: the web draws these with SVG polygons, and the native
+   build walks the same points into a Path.
+   --------------------------------------------------------------------------- */
+
+/* Radius of the coastline at a given angle, on a unit circle. */
+function coastRadius(angle, seed) {
+  var s = seed * 1.7;
+  return 1
+    + 0.11 * Math.sin(angle * 2 - s)
+    + 0.07 * Math.sin(angle * 3 + s * 1.3)
+    + 0.035 * Math.sin(angle * 5 - s * 0.7);
+}
+
+/* The outline as `count` points, going clockwise on screen. */
+function coastPoints(seed, count) {
+  var pts = [];
+  for (var k = 0; k < count; k++) {
+    var a = (Math.PI * 2 * k) / count;
+    var r = coastRadius(a, seed);
+    pts.push({ x: Math.cos(a) * r, y: Math.sin(a) * r, a: a });
+  }
+  return pts;
+}
