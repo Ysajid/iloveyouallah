@@ -6,16 +6,38 @@ extends Node
 ## and no device: the scene is rendered for real under a virtual display.
 
 var _map: MapScreen
+var _ui: CanvasLayer          # 2D screens live here, above the 3D map
 var _who: String = ""
 
 
 func _ready() -> void:
+	# Step 0: --proof shows only the text-shaping check, nothing else
+	# A Control parented to a plain Node never gets the viewport rect and so
+	# draws nothing at all. Everything 2D goes through this layer, which also
+	# puts the reading screens above the 3D map where they belong.
+	_ui = CanvasLayer.new()
+	add_child(_ui)
+
+	# Step 0: --proof shows only the text-shaping check, nothing else
+	if "--proof" in OS.get_cmdline_args():
+		show_screen(TextProof.new())
+		_maybe_screenshot()
+		return
+
 	_who = Store.last_profile
 	if _who.is_empty():
 		# a stand-in so the map has something to draw before profiles exist
 		_who = Store.profiles[0] if Store.profiles.size() > 0 else "…"
 	_open_map()
 	_maybe_screenshot()
+
+
+## Puts one full-screen Control on the UI layer, replacing whatever was there.
+func show_screen(screen: Control) -> void:
+	for child in _ui.get_children():
+		child.queue_free()
+	screen.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_ui.add_child(screen)
 
 
 func _open_map() -> void:
