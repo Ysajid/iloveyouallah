@@ -39,7 +39,6 @@ import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.withTransform
-import androidx.compose.ui.graphics.vector.PathParser
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -235,8 +234,6 @@ private fun IslandOnChart(
     val phase = (tide + isl.seed * 0.17f) % 1f
     val bob = if (open) (1f - abs(phase * 2f - 1f) - 0.5f) * 0.03f * art else 0f
 
-    val coast = remember(isl.i) { state.journey.coastFor(isl) }
-
     Column(
         Modifier
             .offset(x = (cx - plateW / 2f).dp, y = (cy - art / 2f).dp)
@@ -252,7 +249,7 @@ private fun IslandOnChart(
                 .offset(y = bob.dp),
             contentAlignment = Alignment.Center,
         ) {
-            IslandArt(isl, coast, open)
+            IslandArt(isl, open)
             Text(
                 if (open) isl.emoji else "🔒",
                 fontSize = (art * 0.26f).coerceIn(15f, 30f).sp,
@@ -333,83 +330,124 @@ private fun IslandOnChart(
     }
 }
 
+/* ---------------- one island, as an isometric solid ---------------- */
+
+/** How far the ground tilts away from the viewer. */
+private const val SQUASH = 0.54f
+
+/** Island height, as a fraction of its radius. */
+private const val ISLE_H = 0.46f
+
+/** Points around the coastline. */
+private const val SAMPLES = 44
+
+/** The sun, upper-left, on the ground plane. */
+private const val LIGHT_X = -0.55f
+private const val LIGHT_Y = -0.83f
+
 /**
- * The land. Depth is faked, not modelled: a lit top face over a darker copy
- * of the same coastline pushed down, which is the cliff side.
+ * The land.
+ *
+ * No 3D here: the coastline is a shape lying on the ground, and an oblique
+ * projection tilts that ground away from the viewer —
+ *
+ *     screen.x = x
+ *     screen.y = y * SQUASH - z
+ *
+ * — so an outline becomes a solid. Every coastline edge on the near side is
+ * extruded into a wall and shaded by which way it faces, and that per-face
+ * shading is what makes an island read as an object rather than a sticker.
+ *
+ * Same maths and the same seeds as the web build, so both draw one archipelago.
  */
 @Composable
-private fun IslandArt(isl: Island, coast: String, open: Boolean) {
-    val land = remember(coast) {
-        if (coast.isEmpty()) Path() else PathParser().parsePathString(coast).toPath()
-    }
+private fun IslandArt(isl: Island, open: Boolean) {
+    val outline = remember(isl.seed) { Coast.points(isl.seed, SAMPLES) }
+
+    // worked out once per island rather than per frame
+    val sand = Color(0xFFF3E2BD)
+    val hazeLand = Color(0xFFCFD9DE)
+    val hazeSand = Color(0xFFDFE6E9)
 
     Canvas(Modifier.fillMaxSize()) {
-        if (coast.isEmpty()) return@Canvas
-        // the art is drawn on a 132-unit box so the shallows and the cliff
-        // have room to spill outside the 100-unit coastline
-        val k = size.minDimension / 132f
+        val r = size.minDimension * 0.41f
+        val h = r * ISLE_H
+        val cx = size.width / 2f
+        val cy = size.height * 0.44f
 
-        withTransform({
-            translate(16f * k, 10f * k)
-            scale(k, k, pivot = Offset.Zero)
-        }) {
-            // the paler ring of water an island sits in
-            val ringW = if (open) 128f else 100f
-            val ringH = if (open) 88f else 68f
-            drawOval(
-                brush = if (open) Brush.radialGradient(
-                    0.38f to Color(0xFFE6F7F3).copy(alpha = 0f),
-                    0.60f to Color(0xFFDFF5F0).copy(alpha = 0.70f),
-                    1f to Color(0xFFCFEEF0).copy(alpha = 0f),
-                    center = Offset(50f, 52f),
-                    radius = ringW / 2f,
-                ) else Brush.radialGradient(
-                    0.35f to Color.White.copy(alpha = 0.62f),
-                    1f to Color.White.copy(alpha = 0f),
-                    center = Offset(50f, 52f),
-                    radius = ringW / 2f,
-                ),
-                topLeft = Offset(50f - ringW / 2f, 52f - ringH / 2f),
-                size = Size(ringW, ringH),
-            )
+        fun project(p: Offset, scale: Float, z: Float, dx: Float = 0f, dy: Float = 0f) =
+            Offset(cx + p.x * r * scale + dx, cy + p.y * r * scale * SQUASH - z + dy)
 
-            // the cliff side
-            withTransform({ translate(0f, 10f) }) {
-                drawPath(
-                    path = land,
-                    color = if (open) shade(isl, -26f, 6f) else HazeSkirt.copy(alpha = 0.55f),
-                )
-            }
-            // a pale beach where land meets water
-            withTransform({ translate(0f, 3.5f) }) {
-                drawPath(
-                    path = land,
-                    color = Beach.copy(alpha = if (open) 0.85f else 0.30f),
-                    style = Stroke(width = 3.4f),
-                )
-            }
-            // the lit top face
+        val top = outline.map { project(it, 1f, h) }
+        val base = outline.map { project(it, 1f, 0f) }
+        val sandTop = outline.map { project(it, 1f, h * 0.26f) }
+
+        // the shadow it casts on the water
+        drawPath(
+            polygonOf(outline.map { project(it, 1.02f, 0f, dx = h * 0.55f, dy = h * 0.30f) }),
+            Color(0xFF175668).copy(alpha = if (open) 0.20f else 0.09f),
+        )
+
+        // the shallows it sits in, two soft rings instead of a blur
+        drawPath(polygonOf(outline.map { project(it, 1.34f, 0f) }), Color.White.copy(alpha = 0.30f))
+        drawPath(polygonOf(outline.map { project(it, 1.18f, 0f) }), Color.White.copy(alpha = 0.34f))
+
+        // the walls, near side only, each shaded by the way it faces
+        for (k in outline.indices) {
+            val j = (k + 1) % outline.size
+            var nx = (outline[k].x + outline[j].x) / 2f
+            var ny = (outline[k].y + outline[j].y) / 2f
+            val len = hypot(nx, ny).takeIf { it > 0f } ?: 1f
+            nx /= len; ny /= len
+            if (ny <= 0f) continue              // facing away: hidden behind the top
+
+            val lit = 0.5f + 0.5f * (nx * LIGHT_X + ny * LIGHT_Y)
             drawPath(
-                path = land,
-                brush = if (open) Brush.linearGradient(
-                    0f to shade(isl, 8f),
-                    0.55f to shade(isl, 0f),
-                    1f to shade(isl, -9f),
-                    start = Offset(20f, 0f),
-                    end = Offset(80f, 100f),
-                ) else Brush.linearGradient(
-                    0f to HazeLand.copy(alpha = 0.72f),
-                    1f to HazeLand.copy(alpha = 0.72f),
-                ),
-            )
-            drawPath(
-                path = land,
-                color = if (open) shade(isl, 12f, -6f).copy(alpha = 0.7f)
-                        else HazeRim.copy(alpha = 0.4f),
-                style = Stroke(width = 2f),
+                polygonOf(listOf(top[k], top[j], base[j], base[k])),
+                if (open) shade(isl, -16f - 16f * (1f - lit), 4f)
+                else hazeLand.copy(alpha = 0.75f),
             )
         }
+
+        // a band of sand just above the waterline
+        for (k in outline.indices) {
+            val j = (k + 1) % outline.size
+            val nx = (outline[k].x + outline[j].x) / 2f
+            val ny = (outline[k].y + outline[j].y) / 2f
+            val len = hypot(nx, ny).takeIf { it > 0f } ?: 1f
+            if (ny / len <= 0f) continue
+            drawPath(
+                polygonOf(listOf(sandTop[k], sandTop[j], base[j], base[k])),
+                if (open) sand else hazeSand,
+            )
+        }
+
+        // the top face, lit from the upper left
+        drawPath(
+            polygonOf(top),
+            brush = if (open) Brush.linearGradient(
+                0f to shade(isl, 10f),
+                0.6f to shade(isl, 0f),
+                1f to shade(isl, -7f),
+                start = Offset(cx - r, cy - h - r * SQUASH),
+                end = Offset(cx + r, cy + r * SQUASH),
+            ) else Brush.linearGradient(listOf(hazeLand, hazeLand)),
+        )
+
+        // a softer crown, so the top does not read as a flat card
+        drawPath(
+            polygonOf(outline.map { project(it, 0.62f, h, dy = -r * 0.055f) }),
+            (if (open) shade(isl, 9f) else Color(0xFFDAE2E6)).copy(alpha = 0.55f),
+        )
     }
+}
+
+/** A closed polygon through the given screen points. */
+private fun polygonOf(points: List<Offset>): Path = Path().apply {
+    points.forEachIndexed { index, p ->
+        if (index == 0) moveTo(p.x, p.y) else lineTo(p.x, p.y)
+    }
+    close()
 }
 
 /* ---------------- the boat marks where they are up to ---------------- */
