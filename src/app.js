@@ -133,6 +133,8 @@
     lang: get("lang") === "en" ? "en" : "bn",
     who: null,
     prog: null,
+    justLit: null,     // an island finished just now, for the map to celebrate
+    mapSettled: false, // whether the map has already been scrolled into place
     island: null,      // island number being read
     cardAt: 0,         // index 0..8 within the island
     game: null
@@ -190,7 +192,9 @@
     var all = document.querySelectorAll(".screen");
     for (var k = 0; k < all.length; k++) all[k].classList.remove("on");
     el(screen).classList.add("on");
-    window.scrollTo(0, 0);
+    // the ocean is the background of the map and of nothing else
+    document.body.classList.toggle("on-map", screen === "map");
+    if (screen !== "map") window.scrollTo(0, 0);
   }
 
   function shuffle(list) {
@@ -620,17 +624,13 @@
     var chart = el("map-chart");
     clear(chart);
 
-    /* ---- the water, the moonlight and the route ---- */
+    /* ---- the route, on its own transparent layer over the ocean ---- */
     var sea = svgEl("svg", {
-      class: "sea",
+      class: "route",
       viewBox: "0 0 " + MAP_W + " " + MAP_H,
       preserveAspectRatio: "none",
       "aria-hidden": "true",
     });
-    sea.appendChild(oceanDefs());
-    sea.appendChild(svgEl("rect", { x: 0, y: 0, width: MAP_W, height: MAP_H, fill: "url(#water)" }));
-    sea.appendChild(svgEl("ellipse", { cx: 20, cy: 10, rx: 74, ry: 56, fill: "url(#sunglow)" }));
-    sea.appendChild(swell());
 
     for (var k = 0; k < ISLANDS.length - 1; k++) {
       var from = ISLANDS[k], to = ISLANDS[k + 1];
@@ -652,7 +652,13 @@
       var open = unlocked(isl.i);
       var p = S.prog.islands[isl.i] || { seen: [], stars: 0, done: false };
 
-      var btn = make("button", "isle" + (open ? "" : " locked") + (p.done ? " done" : ""));
+      var here = open && !p.done;
+      var justLit = S.justLit === isl.i;
+      var btn = make("button", "isle"
+        + (open ? "" : " locked")
+        + (p.done ? " done" : "")
+        + (here ? " here" : "")
+        + (justLit ? " just-lit" : ""));
       btn.style.left = isl.x * 100 + "%";
       btn.style.top = isl.y * 100 + "%";
       btn.style.width = artSize(chart.clientWidth || 360, isl) + "px";
@@ -701,6 +707,46 @@
     }
 
     sizeChart(chart);
+
+    if (S.justLit) {
+      splash(chart, S.justLit);
+      S.justLit = null;
+    }
+    sailTo(chart, next || ISLANDS[ISLANDS.length - 1]);
+  }
+
+  /* A ring of water pushed out from an island that has just been lit. */
+  function splash(chart, islandNumber) {
+    var isl = null;
+    for (var k = 0; k < ISLANDS.length; k++) {
+      if (ISLANDS[k].i === islandNumber) { isl = ISLANDS[k]; break; }
+    }
+    if (!isl) return;
+    for (var r = 0; r < 3; r++) {
+      var ring = make("div", "ripple");
+      var size = chart.clientWidth * (0.36 + r * 0.16);
+      ring.style.width = size + "px";
+      ring.style.height = size * 0.54 + "px";   // squashed, to sit on the water
+      ring.style.left = isl.x * 100 + "%";
+      ring.style.top = isl.y * 100 + "%";
+      ring.style.animationDelay = (r * 0.16) + "s";
+      chart.appendChild(ring);
+      window.setTimeout(function (node) {
+        return function () { if (node.parentNode) node.parentNode.removeChild(node); };
+      }(ring), 1400 + r * 200);
+    }
+  }
+
+  /* Bring the island they are up to into view, rather than dropping them at
+     the top of a long chart and making them hunt for it. */
+  function sailTo(chart, isl) {
+    if (!isl) return;
+    window.requestAnimationFrame(function () {
+      var top = chart.offsetTop + chart.offsetHeight * isl.y;
+      var target = Math.max(0, top - window.innerHeight * 0.52);
+      window.scrollTo({ top: target, behavior: S.mapSettled ? "smooth" : "auto" });
+      S.mapSettled = true;
+    });
   }
 
   /* ---------- reading the nine cards ---------- */
@@ -888,6 +934,7 @@
     g.at++;
     if (g.at < g.rounds.length) { paintGame(); return; }
 
+    S.justLit = S.island;          // the map celebrates it on the way back
     var p = islandProg(S.island);
     var earned = g.mistakes === 0 ? 3 : 2;
     if (earned > p.stars) p.stars = earned;

@@ -44,6 +44,18 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.waitForUpOrCancellation
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
+import kotlin.math.PI
+import kotlin.math.sin
 import kotlin.math.abs
 import kotlin.math.hypot
 
@@ -90,21 +102,13 @@ fun OceanChart(state: JourneyState) {
             animationSpec = infiniteRepeatable(tween(7500), RepeatMode.Restart),
             label = "tide",
         )
-        val drift by clock.animateFloat(
-            initialValue = 0f,
-            targetValue = 1f,
-            animationSpec = infiniteRepeatable(tween(26000), RepeatMode.Restart),
-            label = "drift",
-        )
-
         Box(
             Modifier
                 .fillMaxWidth()
                 .height(heightDp.dp)
-                .clip(RoundedCornerShape(26.dp))
-                .border(BorderStroke(1.dp, Color(0xFFCFE3E8)), RoundedCornerShape(26.dp)),
         ) {
-            Sea(state, drift)
+            // only the route is drawn here; the water is the page background
+            RouteLayer(state)
 
             state.journey.islands.forEach { isl ->
                 IslandOnChart(state, isl, widthDp, heightDp, tide)
@@ -118,61 +122,9 @@ fun OceanChart(state: JourneyState) {
 /* ---------------- water, sunlight, swell and the route ---------------- */
 
 @Composable
-private fun Sea(state: JourneyState, drift: Float) {
+private fun RouteLayer(state: JourneyState) {
     Canvas(Modifier.fillMaxSize()) {
-        val w = size.width
-        val h = size.height
-
-        drawRect(
-            brush = Brush.linearGradient(
-                0f to WaterTop, 0.30f to WaterMid, 0.68f to WaterLow, 1f to WaterDeep,
-                start = Offset(0f, 0f),
-                end = Offset(w * 0.25f, h),
-            )
-        )
-
-        // sunlight off the top corner
-        drawCircle(
-            brush = Brush.radialGradient(
-                0f to Sun.copy(alpha = 0.72f),
-                0.55f to Color(0xFFFFF6D8).copy(alpha = 0.22f),
-                1f to Color(0xFFFFF6D8).copy(alpha = 0f),
-                center = Offset(w * 0.20f, h * 0.033f),
-                radius = w * 0.74f,
-            ),
-            radius = w * 0.74f,
-            center = Offset(w * 0.20f, h * 0.033f),
-        )
-
-        swell(w, h, drift)
-        route(state, w, h)
-    }
-}
-
-/** Foam lines across the whole chart. Cheap, and they read as water. */
-private fun DrawScope.swell(w: Float, h: Float, drift: Float) {
-    val shift = drift * 8f / Chart.SEA_W * w
-    var y = 4f
-    while (y < Chart.SEA_H) {
-        val yPx = y / Chart.SEA_H * h
-        val path = Path().apply {
-            moveTo(-12f / Chart.SEA_W * w + shift, yPx)
-            var x = -12f
-            while (x <= Chart.SEA_W + 12f) {
-                val lift = (((x + y).toInt() % 3) - 1) * 0.5f / Chart.SEA_H * h
-                relativeQuadraticTo(
-                    4f / Chart.SEA_W * w, lift,
-                    8f / Chart.SEA_W * w, 0f,
-                )
-                x += 8f
-            }
-        }
-        drawPath(
-            path = path,
-            color = Foam.copy(alpha = 0.30f),
-            style = Stroke(width = if (y % 11f < 5.5f) 0.26f / Chart.SEA_W * w else 0.15f / Chart.SEA_W * w),
-        )
-        y += 5.5f
+        route(state, size.width, size.height)
     }
 }
 
@@ -224,29 +176,79 @@ private fun IslandOnChart(
     val words = state.words
     val open = state.progress.unlocked(isl.i)
     val here = state.progress.of(isl.i)
+    val isCurrent = open && !here.done
+    val justLit = state.justLit == isl.i
 
     val art = Chart.artSizeDp(isl, widthDp)
     val plateW = Chart.plateWidthDp(isl, widthDp)
     val (cx, cy) = Chart.centreDp(isl, widthDp, chartHeightDp)
 
-    // triangle wave, so the rise and fall are the same speed; each island
-    // starts at its own point in the cycle so they do not bob in unison
-    val phase = (tide + isl.seed * 0.17f) % 1f
-    val bob = if (open) (1f - abs(phase * 2f - 1f) - 0.5f) * 0.03f * art else 0f
+    val outline = remember(isl.seed) { Coast.points(isl.seed, SAMPLES) }
+
+    // Pressing an island should feel like pushing something solid: it squashes
+    // and settles. Compose's default ripple is switched off — the island is
+    // not a rectangle, and a rectangle flashing around it looked wrong.
+    var pressed by remember { mutableStateOf(false) }
+    val squashX by animateFloatAsState(
+        if (pressed) 1.05f else 1f,
+        spring(dampingRatio = 0.45f, stiffness = 900f),
+        label = "squashX",
+    )
+    val squashY by animateFloatAsState(
+        if (pressed) 0.87f else 1f,
+        spring(dampingRatio = 0.45f, stiffness = 900f),
+        label = "squashY",
+    )
+
+    // the island they are up to breathes, so the eye finds it
+    val breathe = if (isCurrent) 1f + 0.035f * sin(tide * PI.toFloat() * 2f) else 1f
+
+    // one celebration when an island has just been finished
+    val lit = remember(justLit) { Animatable(if (justLit) 0.72f else 1f) }
+    LaunchedEffect(justLit) {
+        if (justLit) {
+            lit.animateTo(1f, spring(dampingRatio = 0.42f, stiffness = 320f))
+            state.clearJustLit()
+        }
+    }
+
+    val bobPhase = (tide + isl.seed * 0.17f) % 1f
+    val bob = if (open) (1f - abs(bobPhase * 2f - 1f) - 0.5f) * 0.03f * art else 0f
 
     Column(
         Modifier
             .offset(x = (cx - plateW / 2f).dp, y = (cy - art / 2f).dp)
-            .width(plateW.dp)
-            .then(
-                if (open) Modifier.clickable { state.openIsland(isl.i) } else Modifier
-            ),
+            .width(plateW.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Box(
             Modifier
                 .size(art.dp)
-                .offset(y = bob.dp),
+                .offset(y = bob.dp)
+                .graphicsLayer {
+                    scaleX = squashX * lit.value * breathe
+                    scaleY = squashY * lit.value * breathe
+                }
+                .then(
+                    if (open) Modifier.pointerInput(isl.i, art) {
+                        awaitPointerEventScope {
+                            while (true) {
+                                val down = awaitFirstDown(requireUnconsumed = false)
+                                val boxPx = size.width.toFloat()
+                                // only the land counts, not the water around it
+                                if (!IslandTouch.hitsLand(down.position, boxPx, outline)) continue
+                                pressed = true
+                                val up = waitForUpOrCancellation()
+                                pressed = false
+                                if (up != null &&
+                                    IslandTouch.hitsLand(up.position, boxPx, outline)
+                                ) {
+                                    state.openIsland(isl.i)
+                                }
+                            }
+                        }
+                    } else Modifier
+                ),
             contentAlignment = Alignment.Center,
         ) {
             IslandArt(isl, open)
@@ -274,8 +276,8 @@ private fun IslandOnChart(
             }
         }
 
-        // the label, tucked up over the shore. Deliberately not animated: it
-        // holds still so the Bangla stays readable and taps land where aimed.
+        // the label holds still on purpose: the Bangla stays readable and the
+        // island alone carries the motion
         Column(
             Modifier
                 .offset(y = -(art * Chart.PLATE_TUCK).dp)
@@ -332,12 +334,6 @@ private fun IslandOnChart(
 
 /* ---------------- one island, as an isometric solid ---------------- */
 
-/** How far the ground tilts away from the viewer. */
-private const val SQUASH = 0.54f
-
-/** Island height, as a fraction of its radius. */
-private const val ISLE_H = 0.46f
-
 /** Points around the coastline. */
 private const val SAMPLES = 44
 
@@ -352,7 +348,7 @@ private const val LIGHT_Y = -0.83f
  * projection tilts that ground away from the viewer —
  *
  *     screen.x = x
- *     screen.y = y * SQUASH - z
+ *     screen.y = y * SQUASH_FACTOR - z
  *
  * — so an outline becomes a solid. Every coastline edge on the near side is
  * extruded into a wall and shaded by which way it faces, and that per-face
@@ -371,12 +367,12 @@ private fun IslandArt(isl: Island, open: Boolean) {
 
     Canvas(Modifier.fillMaxSize()) {
         val r = size.minDimension * 0.41f
-        val h = r * ISLE_H
+        val h = r * ISLE_H_FRACTION
         val cx = size.width / 2f
         val cy = size.height * 0.44f
 
         fun project(p: Offset, scale: Float, z: Float, dx: Float = 0f, dy: Float = 0f) =
-            Offset(cx + p.x * r * scale + dx, cy + p.y * r * scale * SQUASH - z + dy)
+            Offset(cx + p.x * r * scale + dx, cy + p.y * r * scale * SQUASH_FACTOR - z + dy)
 
         val top = outline.map { project(it, 1f, h) }
         val base = outline.map { project(it, 1f, 0f) }
@@ -429,8 +425,8 @@ private fun IslandArt(isl: Island, open: Boolean) {
                 0f to shade(isl, 10f),
                 0.6f to shade(isl, 0f),
                 1f to shade(isl, -7f),
-                start = Offset(cx - r, cy - h - r * SQUASH),
-                end = Offset(cx + r, cy + r * SQUASH),
+                start = Offset(cx - r, cy - h - r * SQUASH_FACTOR),
+                end = Offset(cx + r, cy + r * SQUASH_FACTOR),
             ) else Brush.linearGradient(listOf(hazeLand, hazeLand)),
         )
 

@@ -38,6 +38,12 @@ class JourneyState(
     var cardAt by mutableStateOf(0)
         private set
 
+    /** An island finished just now, for the map to celebrate on the way back. */
+    var justLit by mutableStateOf<Int?>(null)
+        private set
+
+    fun clearJustLit() { justLit = null }
+
     val words: Words get() = Words(lang)
 
     fun chooseLang(value: Lang) {
@@ -120,6 +126,7 @@ class JourneyState(
     }
 
     fun finishGame(mistakes: Int) {
+        justLit = island
         progress = progress.finishing(island, mistakes)
         save()
         screen = Screen.Finish
@@ -173,6 +180,9 @@ private fun App(state: JourneyState, onExit: () -> Unit) {
     }
 
     DayBackdrop {
+        // the ocean is the background of the map and of nothing else
+        if (state.screen == Screen.Map) Ocean()
+
         when (state.screen) {
             Screen.Profiles -> ProfilesScreen(state)
             Screen.Map -> MapScreen(state)

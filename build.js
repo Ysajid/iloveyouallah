@@ -191,6 +191,71 @@ function dataUri(png) {
   return "data:image/png;base64," + png.toString("base64");
 }
 
+/* ---------------- the wave texture ----------------
+   A tile of swell that repeats seamlessly, so it can scroll sideways for ever
+   without a visible seam. Seamless in both directions is a matter of using
+   whole numbers of cycles across the tile: every sine below completes an
+   integer number of periods over the width and the height, so the right edge
+   continues into the left and the bottom into the top.
+
+   Drawn rather than downloaded: one generator, both builds, no asset to keep
+   in step by hand. */
+
+const WAVE_W = 512;
+const WAVE_H = 256;
+
+function waveField(u, v) {
+  // u, v are 0..1 across the tile. Frequencies are integers, hence seamless.
+  const band = (rows, wobble, amp, phase) =>
+    Math.sin(TAU * (v * rows + amp * Math.sin(TAU * u * wobble + phase)));
+
+  const crest = band(6, 3, 0.055, 0.0);
+  const fine = band(11, 5, 0.030, 2.1);
+  const drift = band(3, 2, 0.070, 4.3);
+
+  // thin bright lines along the crests, with the finer set half as strong
+  const sharpen = (x, k) => Math.pow(Math.max(0, x), k);
+  return sharpen(crest, 14) * 0.85 + sharpen(fine, 22) * 0.4 + sharpen(drift, 10) * 0.28;
+}
+
+const TAU = Math.PI * 2;
+
+function drawWaves() {
+  const rgba = Buffer.alloc(WAVE_W * WAVE_H * 4);
+  for (let y = 0; y < WAVE_H; y++) {
+    for (let x = 0; x < WAVE_W; x++) {
+      const value = waveField((x + 0.5) / WAVE_W, (y + 0.5) / WAVE_H);
+      const alpha = Math.round(Math.max(0, Math.min(1, value)) * 150);
+      const at = (y * WAVE_W + x) * 4;
+      rgba[at] = 255;
+      rgba[at + 1] = 255;
+      rgba[at + 2] = 255;
+      rgba[at + 3] = alpha;
+    }
+  }
+  return encodePng(WAVE_W, WAVE_H, rgba);
+}
+
+/* Proves the tile really is seamless: the far edge must continue into the
+   near one, or a scrolling ocean shows a repeating scar. */
+function checkWavesSeamless() {
+  let worstX = 0;
+  let worstY = 0;
+  for (let y = 0; y < WAVE_H; y++) {
+    const left = waveField(0.5 / WAVE_W, (y + 0.5) / WAVE_H);
+    const wrapped = waveField((WAVE_W - 0.5) / WAVE_W + 1 / WAVE_W, (y + 0.5) / WAVE_H);
+    worstX = Math.max(worstX, Math.abs(left - wrapped));
+  }
+  for (let x = 0; x < WAVE_W; x++) {
+    const top = waveField((x + 0.5) / WAVE_W, 0.5 / WAVE_H);
+    const wrapped = waveField((x + 0.5) / WAVE_W, (WAVE_H - 0.5) / WAVE_H + 1 / WAVE_H);
+    worstY = Math.max(worstY, Math.abs(top - wrapped));
+  }
+  if (worstX > 1e-9 || worstY > 1e-9) {
+    throw new Error("wave tile is not seamless: x " + worstX + ", y " + worstY);
+  }
+}
+
 /* ---------------- put it all together ---------------- */
 
 function read(name) {
@@ -228,6 +293,7 @@ function build() {
     .replace("{{ISLANDS}}", () => read("islands.js").trim())
     .replace("{{NAMES}}", () => read("names.js").trim())
     .replace("{{APP}}", () => read("app.js").trim())
+    .replace("{{WAVES}}", () => dataUri(drawWaves()))
     .replace("{{MANIFEST}}", () => manifestUri)
     .replace(/\{\{ICON180\}\}/g, () => icon180);
 
@@ -242,6 +308,21 @@ function build() {
 
   writeAndroidData();
   writeAndroidIcons();
+  writeWaveTexture();
+}
+
+function writeWaveTexture() {
+  checkWavesSeamless();
+  const png = drawWaves();
+  const target = path.join(
+    __dirname, "android", "app", "src", "main", "res", "drawable-nodpi", "waves.png"
+  );
+  fs.mkdirSync(path.dirname(target), { recursive: true });
+  fs.writeFileSync(target, png);
+  console.log(
+    "built the wave tile                (" + WAVE_W + "x" + WAVE_H + ", seamless, " +
+    (png.length / 1024).toFixed(0) + " KB)"
+  );
 }
 
 /* The native app reads the same names out of an asset, so the Bangla
